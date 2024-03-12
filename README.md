@@ -2,7 +2,7 @@
 ## Purpose
 This repository contains various bash scripts and R Markdown files for a bulk RNA-sequencing pipeline. 
 ## Input data
-Raw bulk RNA-sequencing files in the fastq format.
+Raw bulk RNA-sequencing files in the fastq format, a fasta file cotaining the nucleotide sequence of your reference genome, and a gtf annotation file for that reference genome.
 ## Software requirements
 Bash scripts (.sh) in this pipeline are intended to be run on the CURC Alpine supercomputer in a dedicated conda environment containing the software packages sra-tools, fastp, bedtools, samtools, star, fastqc, and multiqc. R Markdown documents are intended to be run in R Studio.
 ## Directory structure
