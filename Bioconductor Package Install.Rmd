@@ -1,0 +1,49 @@
+---
+title: "Bioconductor Package Install"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This script performs a one-time installation of Bioconductor packages related to RNA-seq analysis. These can be loaded at the beginning of each relevant script with the library() function.
+
+```{r installation, results="hide"}
+if (!require("BiocManager", quietly = TRUE))
+        install.packages("BiocManager")
+BiocManager::install(version = "3.18", force=TRUE)
+
+options(BioC_mirror = "http://bioconductor.org")
+
+BiocManager::install("DESeq2")
+BiocManager::install("apeglm")
+install.packages("corrplot")
+install.packages("pheatmap")
+install.packages("RColorBrewer")
+remove.packages("rlang")
+install.packages("rlang")
+BiocManager::install("clusterProfiler")
+BiocManager::install("pathview")
+BiocManager::install("enrichplot")
+BiocManager::install("EnhancedVolcano")
+BiocManager::install("ReactomePA")
+install.packages("ggnewscale")
+install.packages("msigdbr")
+install.packages("dplyr")
+install.packages("tidyverse")
+install.packages("ggridges")
+install.packages("gplots")
+BiocManager::install("rtracklayer")
+BiocManager::install("Rsamtools")
+BiocManager::install("edgeR")
+BiocManager::install("GSVA")
+BiocManager::install("GSEABase")
+BiocManager::install("qusage")
+BiocManager::install("limma")
+install.packages("dendextend")
+install.packages("factoextra")
+install.packages("NbClust")
+```

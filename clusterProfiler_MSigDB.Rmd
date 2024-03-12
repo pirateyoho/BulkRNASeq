@@ -1,0 +1,172 @@
+---
+title: "clusterProfiler-specific-MSigDB"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+The purpose of this script is to perform and plot GSEA conducted with the R package clusterProfiler. This analysis evaluates the enrichment of user-supplied differential gene expression data for gene sets available in the Molecular Signatures Database, and allows the selection of specific MSigDB categories for analysis.
+
+```{r installation, include=FALSE}
+# Load necessary packages
+library(clusterProfiler)
+library(pathview)
+library(enrichplot)
+library(ggplot2)
+library(ggnewscale)
+library(msigdbr)
+library(DOSE)
+library(ReactomePA)
+library(dplyr)
+library(tidyverse)
+library(GSEABase)
+library(RColorBrewer)
+```
+
+
+```{r data-input, echo=FALSE}
+# Set working directory:
+setwd("~/PTCL/PROJ02_100PTCLs/02_scripts")
+# Read in data from deseq2
+df = read.csv("../03_output/ROS CFam 1.0/ROSCFam1UHclust_CLUSTER2vsCLUSTER1_DESeq2res.csv", header=TRUE)
+
+```
+
+```{r convert-probeid, eval=FALSE, echo=FALSE}
+# If there is no column of gene symbols (probe ID only), run this code. Otherwise, exclude this code chunk with eval=FALSE and run the next code chunk instead.
+
+# take the stat column from DESeq2 results for ranking
+original_gene_list <- df$stat
+# name the vector of probe IDs (ENSEMBL gene IDs)
+names(original_gene_list) <- df$X
+# omit any NA values
+gene_list <- na.omit(original_gene_list)
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+# Install annotations
+## Install and load the canine genome annotations. All available annotations can be found here: http://bioconductor.org/packages/release/BiocViews.html#___OrgDb.
+organism = "org.Cf.eg.db" # Set the desired organism.
+# BiocManager::install(organism, character.only=TRUE) # First time only, then comment out this line.
+library(organism, character.only=TRUE)
+
+keytypes(org.Cf.eg.db)
+symbols <- bitr(names(original_gene_list), fromType="ENSEMBL", toType="SYMBOL", OrgDb=organism)
+dedup_symbols <- symbols[!duplicated(symbols[c("ENSEMBL")]),] # Removes duplicate IDs
+df2 <- df[df$X %in% dedup_symbols$ENSEMBL,] # Creates a new dataframe, df2, which has only the genes which were successfully mapped using the bitr function.
+df2$Y <- dedup_symbols$SYMBOL # Creates a new column in df2 with the corresponding gene symbol
+deg_genes_list <- df2$stat # Creates a vector of the stat column from DESeq2 output
+names(deg_genes_list) <- df2$Y # Names vector with gene symbols
+deg_genes_list <- na.omit(deg_genes_list) # Omits any NA values
+deg_genes_list = sort(deg_genes_list, decreasing = TRUE) # Sorts in decreasing order
+head(deg_genes_list)
+deg_names <- names(deg_genes_list) # Makes a vector of just the ranked gene names
+
+```
+
+```{r}
+# If there is a column of gene symbols in the imported deseq2 data, run this code chunk. Otherwise, exclude with eval=FALSE and run the preceding code chunk.
+
+#df <- df[!duplicated(df$gene_name)] # Remove rows with duplicate gene symbols.
+deg_genes_list <- df$stat # Creates a vector of the stat column from DESeq2 output
+names(deg_genes_list) <- df$gene_name # Names vector with gene symbols
+deg_genes_list <- na.omit(deg_genes_list) # Omits any NA values
+deg_genes_list = sort(deg_genes_list, decreasing = TRUE) # Sorts in decreasing order
+head(deg_genes_list)
+deg_names <- names(deg_genes_list) # Makes a vector of just the ranked gene names
+
+```
+
+```{r msigdb-import, echo=FALSE}
+## Retrieve the specific collection of interest from MSigDB.
+# H = hallmark gene sets, C1 = positional gene sets, C2 = curated gene sets, C3 = motif gene sets, C4 = computational gene sets, C5 = GO gene sets, C6 = oncogenic signatures, C7 = immunologic signatures.
+m_t2g <- msigdbr(species = "Homo sapiens") %>% #, category = "H") %>%
+  dplyr::select(gs_name, gene_symbol)
+head(m_t2g)
+
+```
+
+```{r gsea, echo=FALSE}
+## GSEA using MSigDb gene sets
+gse_msigdb <- GSEA(deg_genes_list, # Use the sorted (ranked) list of gene symbols *and* stat ranking column
+                  exponent = 1,
+                  nPerm = 10000,
+                  minGSSize = 1,
+                  maxGSSize = 800,
+                  pvalueCutoff = 0.05,
+                  pAdjustMethod = "BH",
+                  TERM2GENE = m_t2g,
+                  verbose = TRUE,
+                  by = "fgsea")
+
+# Export results:
+gse_msigdb_df <- as.data.frame(gse_msigdb)
+write.csv(gse_msigdb_df, file="../GSEA/Output/gseaMSigDBAll_ROSCfam1UHClust_Cluster2vsCluster1.csv")
+
+## MSigDB over-presentation analysis. For this, we need a vector of gene IDs.
+# To select only those genes with log2fc > 1.5:
+genes_mostup <- names(deg_genes_list)[abs(deg_genes_list) > 1.5]
+# To create a vector of only the top 250 upregulated genes:
+top250_genelist <- df_top250$stat
+top250_geneVector <- df_top250$gene_name
+
+enriched_msigdb <- enricher(top250_geneVector, TERM2GENE=m_t2g)
+
+# Export results
+enriched_msigdb_df <- as.data.frame(enriched_msigdb)
+write.csv(enriched_msigdb_df, file="../GSEA/Output/enricherMSigDBC6top250_CanFam31PTCLvsLN.csv")
+```
+
+## Dotplots
+```{r}
+dotplot(gse_msigdb, showCategory=10, split=".sign") + facet_grid(.~.sign)
+```
+
+```{r}
+gse_msigdb %>%
+  dotplot(showCategory = 20, x = "NES") +
+  scale_colour_viridis_c(name = "Adjusted\nP-value",
+                         option="H") +
+  geom_vline(xintercept = 0, linetype=2)
+```
+
+
+
+## Ridgeplot
+```{r}
+ridgeplot(gse_msigdb, showCategory=20) + labs(x = "enrichment distribution")
+```
+
+## Enrichment plot
+```{r get-enriched-paths, eval=FALSE, echo=FALSE}
+# This section will not be included in final knit
+enrichedPaths <- gse_msigdb$ID # Create a character vector of all enriched gene sets
+enrichedPaths # View the list in the console for easy copy/paste
+```
+```{r enrichment-plot, fig.height=6, fig.width=8, fig.fullwidth=TRUE}
+# for geneSetID, either individually list gene sets to plot with c("GENE_SET_1", "GENE_SET_2") or use character vector variable from above to plot all enriched sets.
+
+mypalette <- brewer.pal(7, "Set1")[c(1,2,3,4,5,6,7)] # Adjust as needed for the number of gene sets to be mapped on the figure. If using 6, recommended to exclude 6 (yellow).
+
+gseaplot2(gse_msigdb, 
+          geneSetID = c("HALLMARK_TNFA_SIGNALING_VIA_NFKB",
+                        "BIOCARTA_NFKB_PATHWAY",
+                        "HALLMARK_TGF_BETA_SIGNALING",
+                        "GILMORE_CORE_NFKB_PATHWAY",
+                        ),
+          title = "Effector Sets",
+          color = mypalette
+)
+```
+
+
+# Citations
+```{r}
+sessionInfo()
+citation()
+```

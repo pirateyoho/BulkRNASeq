@@ -1,0 +1,151 @@
+---
+title: "GSVA_ssGSEA"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(dev = "png",
+                      dpi = 300,
+                      echo = TRUE,
+                      warning = FALSE)
+```
+
+
+```{r load-packages, include=FALSE}
+library(BiocManager)
+library(DESeq2)
+library(clusterProfiler)
+library(corrplot)
+library(RColorBrewer)
+library(pheatmap)
+library(dplyr)
+library(readr)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(gridExtra)
+library(rtracklayer)
+library(Rsamtools)
+library(grid)
+library(GGally)
+# library(edgeR)
+library(stringr)
+library(matrixStats)
+library(gridExtra)
+library(magrittr)
+library(GSVA)
+library(dplyr)
+library(GSEABase)
+library(shinyjs)
+library(shinybusy)
+library(qusage)
+library(msigdbr)
+library(Biobase)
+```
+
+# Data Import
+This code requires the dds object generated with DESeq2 in the RNAseq-Analysis pipeline. It is recommended to use normalized counts for GSVA, and most individuals seem to use vst transformed DESeq object. We also need to convert probe IDs to gene symbols for analysis, and a metadata file for annotating figures.
+```{r data-input}
+setwd("/Users/eileen/PTCL/PROJ01_26PTCLs/02_scripts") # set working directory before importing files
+
+# Perform vst transformation
+dds <- readRDS("dds_CD4sOnly_noCF21.RData")
+vsd <- assay(vst(dds))
+
+# Convert probe IDs to gene symbols
+genenames <- read.csv("../01_input/gene.description.csv") # Import metadata file of gene symbols corresponding to probe IDs.
+vsd <- as.data.frame(vsd) # vsd is matrix array by default; convert to data frame for easier manipulation.
+vsd$probe_id <- rownames(vsd) # make a column of probe IDs
+vsd <- merge(as(vsd,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Adds a column of gene names for the associated probe ID
+vsd <- vsd[!duplicated(vsd$gene_name), ] # Remove rows with duplicate gene symbols.
+rownames(vsd) <- vsd$gene_name # Make gene symbols the rownames
+vsd <- dplyr::select(vsd, -c("probe_id", "gene_name")) # Remove the probe_id and gene_name columns.
+head(vsd) #make sure columns are sample names and rows are gene symbols.
+vsd_matrix <- data.matrix(vsd) # Convert to a matrix prior to analysis.
+
+#Import GMT file
+gmt <- getGmt("../GSEA/Input/scdata_gmt.gmt", geneIdType = SymbolIdentifier())
+
+#Import metadata
+metadata <- read.csv("../01_input/metadata_CD4sOnly_outlierRemoved.csv")
+rownames(metadata) <- metadata$Sample # Make the sample ID column the rownames
+metadata <- metadata[, -1, drop=FALSE] # Drop the sample ID column; drop=FALSE will keep rownames with only one column instead of returning a character vector.
+head(metadata) # Make sure samples are rows and classifiers are columns
+```
+
+# GSVA Analysis
+```{r GSVA, message=FALSE, fig.height=6, fig.width=8, fig.fullwidth=TRUE}
+gsva_results <- gsva(
+  vsd_matrix, # count matrix
+  gmt,
+  method = "gsva",
+  # Appropriate for our vst transformed data
+  kcdf = "Gaussian",
+  # Minimum gene set size
+  min.sz = 10,
+  # Maximum gene set size
+  max.sz = 500,
+  # Compute Gaussian-distributed scores
+  mx.diff = TRUE,
+  # Don't print out the progress bar
+  verbose = FALSE)
+
+
+pathway_heatmap <- pheatmap::pheatmap(gsva_results,
+                                      annotation_col = metadata,
+                                      show_colnames = TRUE,
+                                      show_rownames = TRUE,
+                                      fontsize_row = 10,
+                                      cluster_cols = TRUE, 
+                                      cluster_rows = TRUE,
+                                      cutree_rows = 5, 
+                                      clustering_distance_rows = "euclidean",
+                                      clustering_distance_cols = "euclidean",
+                                      clustering_method = "ward.D2") + 
+ scale_fill_gradient(c('dodgerblue', 'black', "yellow"))# Shrink the pathway labels a tad
+```
+
+# Single sample GSEA analysis
+```{r ssGSEA, results=FALSE, fig.height=6, fig.width=8, fig.fullwidth=TRUE}
+ssgsea_results <- gsva(
+  vsd_matrix, # count matrix
+  gmt, #gene sets from gmt file
+  method = "ssgsea",
+  # Appropriate for our vst transformed data
+  kcdf = "Gaussian",
+  # Minimum gene set size
+  min.sz = 10,
+  # Maximum gene set size
+  max.sz = 500,
+  # Compute Gaussian-distributed scores
+  mx.diff = TRUE,
+  # Don't print out the progress bar
+  verbose = FALSE)
+
+pathway_heatmap <- pheatmap::pheatmap(ssgsea_results,
+                                      annotation_col = metadata,
+                                      show_colnames = TRUE,
+                                      show_rownames = TRUE,
+                                      fontsize_row = 10,
+                                      cluster_cols = TRUE, 
+                                      cluster_rows = TRUE,
+                                      cutree_rows = 5, 
+                                      clustering_distance_rows = "euclidean", 
+                                     clustering_distance_cols = "euclidean",
+                                     clustering_method = "ward.D2") + 
+ scale_fill_gradient(c('dodgerblue', 'black', "yellow"))# Shrink the pathway labels a tad
+```
+
+# Export results
+```{r file-export}
+write.csv(gsva_results, "gsva_scClusters_CD4PTCL.csv")
+write.csv(ssgsea_results, "ssgsea_scClusters_CD4PTCL.csv")
+```
+
+# Citations
+```{r}
+sessionInfo()
+citation()
+```

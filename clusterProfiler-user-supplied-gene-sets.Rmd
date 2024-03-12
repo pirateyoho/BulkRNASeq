@@ -1,0 +1,172 @@
+---
+title: "clusterProfiler-user-supplied-gene-sets"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Intro
+The purpose of this script is to perform and plot GSEA conducted with the R package clusterProfiler. This analysis evaluates the enrichment of user-supplied differential gene expression data for various user-supplied gene sets (in .gmt format).
+
+```{r installation, include=FALSE}
+# Load necessary packages
+library(BiocManager)
+library(DESeq2)
+library(clusterProfiler)
+library(corrplot)
+library(dplyr)
+library(gson)
+library(pathview)
+library(enrichplot)
+library(ggplot2)
+library(ggnewscale)
+library(msigdbr)
+library(DOSE)
+library(ReactomePA)
+library(tidyverse)
+library(GSEABase)
+library(RColorBrewer)
+library(ggridges)
+library(readr)
+library(knitr)
+```
+
+
+```{r data-input, echo=FALSE}
+# Set working directory:
+setwd("~/PTCL/PROJ02_100PTCLs/02_scripts")
+# Read in data from deseq2
+df = read.csv("../03_output/CanFam 3.1/CanFam31_PTCLMROH1GATD3AvsPTCLNoFusion_DESeq2res.csv", header=TRUE)
+
+```
+
+```{r convert-probeid, eval=FALSE, echo=FALSE}
+# If there is no column of gene symbols (probe ID only), run this code. Otherwise, exclude this code chunk with eval=FALSE and run the next code chunk instead.
+
+# take the stat column from DESeq2 results for ranking
+original_gene_list <- df$stat
+# name the vector of probe IDs (ENSEMBL gene IDs)
+names(original_gene_list) <- df$X
+# omit any NA values
+gene_list <- na.omit(original_gene_list)
+# sort the list in decreasing order (required for clusterProfiler)
+gene_list = sort(gene_list, decreasing = TRUE)
+
+# Install annotations
+## Install and load the canine genome annotations. All available annotations can be found here: http://bioconductor.org/packages/release/BiocViews.html#___OrgDb.
+organism = "org.Cf.eg.db" # Set the desired organism.
+# BiocManager::install(organism, character.only=TRUE) # First time only, then comment out this line.
+library(organism, character.only=TRUE)
+
+symbols <- bitr(names(original_gene_list), fromType="ENSEMBL", toType="SYMBOL", OrgDb=organism)
+dedup_symbols <- symbols[!duplicated(symbols[c("ENSEMBL")]),] # Removes duplicate IDs
+df2 <- df[df$X %in% dedup_symbols$ENSEMBL,] # Creates a new dataframe, df2, which has only the genes which were successfully mapped using the bitr function.
+df2$Y <- dedup_symbols$SYMBOL # Creates a new column in df2 with the corresponding gene symbol
+deg_genes_list <- df2$stat # Creates a vector of the stat column from DESeq2 output
+names(deg_genes_list) <- df2$Y # Names vector with gene symbols
+deg_genes_list <- na.omit(deg_genes_list) # Omits any NA values
+deg_genes_list = sort(deg_genes_list, decreasing = TRUE) # Sorts in decreasing order
+deg_names <- names(deg_genes_list) # Makes a vector of just the ranked gene names
+
+```
+
+```{r rank-symbols, echo=FALSE}
+# If there is a column of gene symbols in the imported deseq2 data, run this code chunk. Otherwise, exclude with eval=FALSE and run the preceding code chunk.
+
+deg_genes_list <- df$stat # Creates a vector of the stat column from DESeq2 output
+names(deg_genes_list) <- df$gene_name # Names vector with gene symbols
+deg_genes_list <- na.omit(deg_genes_list) # Omits any NA values
+deg_genes_list = sort(deg_genes_list, decreasing = TRUE) # Sorts in decreasing order
+deg_names <- names(deg_genes_list) # Makes a vector of just the ranked gene names
+
+```
+
+```{r mutliple-gmt-import, eval=FALSE, echo=FALSE}
+## Input GMT files for specific gene set(s) of interest.
+# For importing and combining multiple GMT files in the same directory. Otherwise, exclude with eval=FALSE and run the next code chunk.
+
+setwd("../GSEA/Input/Oncogenic_Pathways") # set working directory to where cell of origin .gmt files are located
+gmtFiles <- list.files(pattern = "\\.gmt", full.names = TRUE) # Get list of all .gmt files in this directory
+gmtTables <- lapply(gmtFiles, read.gmt) # Apply the read.gmt function to the list of .gmt files and save as a variable
+gmt <- do.call(rbind, gmtTables) # Rbind files
+
+setwd("~/PTCL/PROJ01_26PTCLs/02_scripts") # Set working directory back to default for the session.
+```
+
+```{r single-gmt-import, echo=FALSE, warning=FALSE}
+## Input GMT files for specific gene sets of interest.
+# For single gmt file (if combining multiple gmt files, exclude with eval=FALSE and run the preceding code chunk instead).
+gmt <- read.gmt.wp("../GSEA/Input/scdata_gmt.gmt", output="data.frame")
+gmt <- gmt[, c("name", "gene")]
+```
+```{r}
+# If inputting a csv for TERM2GENE (1st column of term ID and second column of corresponding mapped gene)
+gmt <- read.csv("path to csv")
+```
+
+
+```{r gsea, echo=FALSE, message=FALSE, warning=FALSE}
+## Perform GSEA with order ranked gene list and TERM2GENE = the merged data frames of our annotated gene sets of interest.
+gse <- GSEA(deg_genes_list, # Use the sorted list of gene symbols *and* stat
+                   exponent = 1,
+                   nPerm = 10000,
+                   minGSSize = 1,
+                   maxGSSize = 800,
+                   pvalueCutoff = 0.05,
+                   pAdjustMethod = "BH",
+                   TERM2GENE = gmt,
+                   verbose = TRUE,
+                   by = "fgsea")
+
+## Export results
+gse_df <- as.data.frame(gse)
+write.csv(gse_df, file="../03_output/gseaOncogenicPathways_CanFam31MROH1GATD3A.csv")
+```
+
+## Dotplot
+```{r dotplot, echo=FALSE, message=FALSE, warning=FALSE}
+gse %>%
+  dotplot(showCategory = 30, x = "NES") +
+  scale_colour_viridis_c(name = "Adjusted\nP-value",
+                         option="H") +
+  geom_vline(xintercept = 0, linetype=2)
+```
+
+## Ridgeplot
+```{r ridgeplot, echo=FALSE, warning=FALSE}
+ridgeplot(gse, showCategory=20) + labs(x = "enrichment distribution")
+```
+
+## Enrichment plot
+```{r get-enriched-paths, eval=FALSE, echo=FALSE}
+# This section will not be included in final knit
+enrichedPaths <- gse$ID # Create a character vector of all enriched gene sets
+enrichedPaths # View the list in the console for easy copy/paste
+```
+
+```{r enrichment-plot, eval=FALSE, echo=FALSE, fig.height=6, fig.width=8, fig.fullwidth=TRUE}
+# for geneSetID, either individually list gene sets to plot with c("GENE_SET_1", "GENE_SET_2") or use character vector variable from above to plot all enriched sets.
+
+mypalette <- brewer.pal(6, "Set1")[c(1,2,3,4,5,7)] # Adjust as needed for the number of gene sets to be mapped on the figure. If using 6, recommended to exclude 6 (yellow).
+
+gseaplot2(gse, 
+          geneSetID = c("paste_gene_set_here",
+                        "paste_gene_set_here",
+                        "paste_gene_set_here",
+                        "paste_gene_set_here",
+                        "paste_gene_set_here",
+                        "paste_gene_set_here"),
+          title = "Effector Sets",
+          color = mypalette
+)
+```
+
+# Citations
+```{r}
+sessionInfo()
+citation()
+```

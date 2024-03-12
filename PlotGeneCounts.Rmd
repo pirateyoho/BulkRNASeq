@@ -1,0 +1,108 @@
+---
+title: "PlotGeneCounts"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Initial setup
+## Load software packages
+```{r, results="hide"}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(RColorBrewer)
+library(DESeq2)
+library(stringr)
+```
+
+## Set working directory
+```{r}
+setwd("/path/to/working/directory") # Set working directory
+```
+
+
+# Data import
+```{r}
+# If starting from a dds object, run this code chunk. If starting from a normalized count matrix, skip this code chunk and run the next one instead.
+
+dds <- readRDS("../03_output/Saved_DDS_Object.Rdata") # import dds object
+genenames <- read.csv('../01_input/gene.description.csv') # Import a csv file where the first column is labeled "probe_id" and contains the ensembl gene IDs, and the second column is labeled "gene_name" and contains the HGNC gene names.
+
+# Create normalized count matrix
+sizeFactors(dds)
+normalized_counts <- as.data.frame(counts(dds, normalized=TRUE))
+normalized_counts$probe_id <- rownames(normalized_counts) # Add a column with probe ID.
+normalized_counts <- merge(as(normalized_counts,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Add column with gene names.
+```
+
+```{r}
+# If starting from a normalized count matrix, run this code chunk.
+normalized_counts <- read.csv("../03_output/NormalizedCounts.csv") # Import CSV of normalized counts that includes a column of gene symbols called gene_name.
+```
+
+## Import metadata
+```{r}
+# Import tab-separated metadata file where the first two columns are the fasta file names, the third column is the sample name, and the fourth column is the sample phenotype.
+metadata <- read.table(file = "../01_input/100PTCLs_metadata_PTMA-HMGB1.txt", header = FALSE) 
+
+# Add column headers
+colnames(metadata) <- c("fasta1", "fasta2", "sample_name", "phenotype") 
+
+# Reduce the metadata table to just the sample_name and phenotype columns.
+metadata <- metadata[,3:4] 
+```
+
+
+# Extract the genes of interest from count data for plotting
+```{r}
+# If you have a long list of genes that would be too cumbersome to type out one by one, use this code chunk to automatically convert them to a comma separated list with each gene enclosed in quotes. Paste the output into the next code chunk for the "genes" variable. Otherwise, skip this code chunk.
+
+txt <- scan(text="GENE1 GENE2 GENE3", what="") # Convert space separated list of genes to comma separated with each gene enclosed in quotes.
+dput(txt) # Copy the output 
+```
+
+
+```{r}
+# Define the list of genes to include in the plot.
+genes <- c("GENE1", "GENE2", "GENE3") # Either type out manually or paste the output from the code chunk above.
+
+# Subset the normalized count matrix to include only the genes in this list
+countsSubset <- normalized_counts %>%
+  filter(gene_name %in% genes)
+
+# Gather the columns to get the normalized counts for each sample in a single column. ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_countsSubset <- countsSubset %>%
+  gather(colnames(countsSubset)[2:104], key = "sample_name", value="normalized_counts") 
+gathered_countsSubset$normalized_counts <- as.numeric(as.character(gathered_countsSubset$normalized_counts)) # Ensures the normalized count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group. This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
+gathered_countsSubset <- inner_join(metadata, gathered_countsSubset)
+```
+
+
+# Draw the plot
+```{r}
+jitter <- position_jitter(width=0.2, height=0.1)
+
+ggplot(gathered_countsSubset, aes(x=gene_name, y=normalized_counts)) +
+  geom_point(aes(color=phenotype), size=1, position=jitter) +
+  scale_y_log10() +
+  xlab("Genes") +
+  ylab("log10 Normalized Counts") +
+  ggtitle("Gene Expression") +
+  theme_bw() +
+  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
+  theme(plot.title = element_text(hjust=0.5))
+```
+
+
+
+
+
+
+
