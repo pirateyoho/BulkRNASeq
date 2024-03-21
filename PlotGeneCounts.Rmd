@@ -90,14 +90,17 @@ gathered_countsSubset <- inner_join(metadata, gathered_countsSubset)
 jitter <- position_jitter(width=0.2, height=0.1)
 
 ggplot(gathered_countsSubset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), size=1, position=jitter) +
+  geom_point(aes(color=phenotype), size=3, position=jitter) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "yellow")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
   scale_y_log10() +
   xlab("Genes") +
   ylab("log10 Normalized Counts") +
   ggtitle("Gene Expression") +
   theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
 ```
 
 
