@@ -31,9 +31,9 @@ library(RColorBrewer)
 
 ```{r data-input, echo=FALSE}
 # Set working directory:
-setwd("~/PTCL/PROJ02_100PTCLs/02_scripts")
+setwd("~/ProjectDirectory/02_scripts") # Replace with path to your local scripts directory
 # Read in data from deseq2
-df = read.csv("../03_output/ROS CFam 1.0/ROSCFam1UHclust_CLUSTER2vsCLUSTER1_DESeq2res.csv", header=TRUE)
+df = read.csv("../03_output/DESeq2res.csv", header=TRUE) # Replace with name of file of DESeq2 results exported in CSV format
 
 ```
 
@@ -106,7 +106,7 @@ gse_msigdb <- GSEA(deg_genes_list, # Use the sorted (ranked) list of gene symbol
 
 # Export results:
 gse_msigdb_df <- as.data.frame(gse_msigdb)
-write.csv(gse_msigdb_df, file="../GSEA/Output/gseaMSigDBAll_ROSCfam1UHClust_Cluster2vsCluster1.csv")
+write.csv(gse_msigdb_df, file="../GSEA/Output/gseaMSigDBAll.csv") # Replace with desired output path and filename
 
 ## MSigDB over-presentation analysis. For this, we need a vector of gene IDs.
 # To select only those genes with log2fc > 1.5:
@@ -119,7 +119,7 @@ enriched_msigdb <- enricher(top250_geneVector, TERM2GENE=m_t2g)
 
 # Export results
 enriched_msigdb_df <- as.data.frame(enriched_msigdb)
-write.csv(enriched_msigdb_df, file="../GSEA/Output/enricherMSigDBC6top250_CanFam31PTCLvsLN.csv")
+write.csv(enriched_msigdb_df, file="../GSEA/Output/enricherMSigDBtop250.csv") # Replace with desired output path and filename
 ```
 
 ## Dotplots
