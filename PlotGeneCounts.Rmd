@@ -6,28 +6,36 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(dev = "png",
+                      dpi = 300,
+                      echo = TRUE,
+                      cache = TRUE,
+                      warning = FALSE,
+                      keep_md = TRUE)
 ```
 
 # Initial setup
 ## Load software packages
-```{r, results="hide"}
-library(dplyr)
-library(tidyverse)
-library(ggplot2)
-library(RColorBrewer)
-library(DESeq2)
-library(stringr)
+```{r softwareload, results="hide"}
+library(tidyverse) # If missing: install.packages("tidyverse")
+library(dplyr) # If missing: install.packages("dplyr") 
+library(ggplot2) # If missing: install.packages("ggplot2")
+library(RColorBrewer) # If missing: install.packages("RColorBrewer")
+library(DESeq2) # If missing: BiocManager::install("DESeq2")
+library(stringr) # If missing: install.packages("stringr")
+library(ggpubr) # If missing: install.packages("ggpubr")
 ```
 
 ## Set working directory
-```{r}
+```{r setwd}
 setwd("/path/to/working/directory") # Set working directory
 ```
 
 
 # Data import
-```{r}
+## Gene expression data
+Option 1 (recommended): Import a DESeq2 dds object.
+```{r dataImportDDS}
 # If starting from a dds object, run this code chunk. If starting from a normalized count matrix, skip this code chunk and run the next one instead.
 
 dds <- readRDS("../03_output/Saved_DDS_Object.Rdata") # import dds object
@@ -40,37 +48,93 @@ normalized_counts$probe_id <- rownames(normalized_counts) # Add a column with pr
 normalized_counts <- merge(as(normalized_counts,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Add column with gene names.
 ```
 
-```{r}
+Option 2: Import a normalized count matrix in CSV format.
+```{r dataImportNormCts}
 # If starting from a normalized count matrix, run this code chunk.
 normalized_counts <- read.csv("../03_output/NormalizedCounts.csv") # Import CSV of normalized counts that includes a column of gene symbols called gene_name.
 ```
 
-## Import metadata
-```{r}
-# Import tab-separated metadata file where the first two columns are the fasta file names, the third column is the sample name, and the fourth column is the sample phenotype.
-metadata <- read.table(file = "../01_input/100PTCLs_metadata_PTMA-HMGB1.txt", header = FALSE) 
+## Sample metadata
+```{r dataImportMetadata}
+# Import tab-separated metadata file
+metadata <- read.table(file = "../01_input/100PTCLs_metadata.txt", header = FALSE)
 
-# Add column headers
-colnames(metadata) <- c("fasta1", "fasta2", "sample_name", "phenotype") 
-
-# Reduce the metadata table to just the sample_name and phenotype columns.
-metadata <- metadata[,3:4] 
+# Add column headers to reflect the data in your metadata file. Note that if your column names are different, you will need to change places in this script that refer to the 'sample_name' and 'phenotype' columns accordingly.
+colnames(metadata) <- c("sample_name", "phenotype")
 ```
 
 
-# Extract the genes of interest from count data for plotting
+# Define gene(s) of interest to plot
+## One gene
+Plot expression of a gene of interest between sample phenotypes.
+
+```{r geneforPlots}
+# Define gene to plot
+oneGene <- c("GENENAME")
+```
+
+### Prepare count data
+Extract the normalized counts and variance stabilized transformed counts for the gene of interest.
+
+#### Normalized counts
 ```{r}
+# Subset the normalized count matrix to include only the gene of interest
+countsSubset1 <- normalized_counts %>%
+  filter(gene_name %in% oneGene)
+
+# Gather the columns to get the normalized counts for each sample in a single column. ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_countsSubset1 <- countsSubset1 %>%
+  gather(colnames(countsSubset1)[2:104], key = "sample_name", value="normalized_counts")
+gathered_countsSubset1$normalized_counts <- as.numeric(as.character(gathered_countsSubset1$normalized_counts)) # Ensures the normalized count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group. This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
+gathered_countsSubset1 <- inner_join(metadata, gathered_countsSubset1)
+```
+
+#### Variance stabilized transformed counts
+NOTE: This code for variance stabilized transformation depends on an imported dds object. If you only imported a CSV of normalized counts, skip these code chunks with EVAL=FALSE.
+
+```{r}
+vsd <- assay(vst(dds)) # perform vst
+
+# Convert probe IDs to gene symbols
+vsd <- as.data.frame(vsd) # vsd is matrix array by default; convert to data frame for easier manipulation.
+vsd$probe_id <- rownames(vsd) # make a column of probe IDs
+vsd <- merge(as(vsd,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Adds a column of gene names for the associated probe ID
+
+# Subset the vst count matrix to include only the gene of interest
+vsdSubset1 <- vsd %>%
+  filter(gene_name %in% oneGene)
+
+# Gather the columns to get the normalized counts for each sample in a single column. ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_vsdSubset1 <- vsdSubset1 %>%
+  gather(colnames(vsdSubset1)[2:104], key = "sample_name", value="vst_counts")
+gathered_vsdSubset1$vst_counts <- as.numeric(as.character(gathered_vsdSubset1$vst_counts)) # Ensures the count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group. This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
+gathered_vsdSubset1 <- inner_join(metadata, gathered_vsdSubset1)
+```
+
+## List of genes
+Plot expression of multiple genes between phenotypes.
+
+```{r makeGeneList, eval=FALSE, include=FALSE, echo=FALSE}
 # If you have a long list of genes that would be too cumbersome to type out one by one, use this code chunk to automatically convert them to a comma separated list with each gene enclosed in quotes. Paste the output into the next code chunk for the "genes" variable. Otherwise, skip this code chunk.
 
 txt <- scan(text="GENE1 GENE2 GENE3", what="") # Convert space separated list of genes to comma separated with each gene enclosed in quotes.
 dput(txt) # Copy the output 
 ```
 
-
-```{r}
+```{r geneListForPlots}
 # Define the list of genes to include in the plot.
 genes <- c("GENE1", "GENE2", "GENE3") # Either type out manually or paste the output from the code chunk above.
+```
 
+### Prepare count data
+Extract the normalized counts and variance stabilized transformed counts for the provided list of genes.
+
+#### Normalized counts
+```{r}
 # Subset the normalized count matrix to include only the genes in this list
 countsSubset <- normalized_counts %>%
   filter(gene_name %in% genes)
@@ -84,19 +148,115 @@ gathered_countsSubset$normalized_counts <- as.numeric(as.character(gathered_coun
 gathered_countsSubset <- inner_join(metadata, gathered_countsSubset)
 ```
 
-
-# Draw the plot
+#### Variance stabilized transformed counts
 ```{r}
-jitter <- position_jitter(width=0.2, height=0.1)
+###### VST COUNTS ######
+vsd <- assay(vst(dds)) # perform vst
 
-ggplot(gathered_countsSubset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), size=3, position=jitter) +
-  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "yellow")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+# Convert probe IDs to gene symbols
+vsd <- as.data.frame(vsd) # vsd is matrix array by default; convert to data frame for easier manipulation.
+vsd$probe_id <- rownames(vsd) # make a column of probe IDs
+vsd <- merge(as(vsd,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Adds a column of gene names for the associated probe ID
+
+# Subset the vst count matrix to include only the specified list of genes
+vsdSubset <- vsd %>%
+  filter(gene_name %in% genes)
+
+# Gather the columns to get the normalized counts for each sample in a single column. ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_vsdSubset <- vsdSubset %>%
+  gather(colnames(vsdSubset)[2:104], key = "sample_name", value="vst_counts")
+gathered_vsdSubset$vst_counts <- as.numeric(as.character(gathered_vsdSubset$vst_counts)) # Ensures the count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group. This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
+gathered_vsdSubset <- inner_join(metadata, gathered_vsdSubset)
+```
+
+# Check data distribution
+Visually inspect the distribution of your data. T-tests can be used for data that fits a normal Gaussian distribution, but a Wilcoxon test is preferred for comparing groups when the data is not normally distributed.
+
+## Density plots
+```{r densityPlots1Gene}
+# For just one gene of interest
+ggdensity(gathered_countsSubset1$normalized_counts,
+          main = "Density of GENENAME count data",
+          xlab = "Normalized GENENAME counts")
+
+ggdensity(gathered_vsdSubset1$vst_counts,
+          main = "Density of GENENAME count data",
+          xlab = "Variance stabilized GENENAME counts")
+```
+
+```{r densityPlotsGeneList}
+# For a list of genes
+ggdensity(gathered_countsSubset$normalized_counts,
+          main = "Density of gene list count data",
+          xlab = "Normalized counts")
+
+ggdensity(gathered_vsdSubset$vst_counts,
+          main = "Density of gene list count data",
+          xlab = "Variance stabilized counts")
+```
+
+## Q-Q plots
+```{r QQplots1Gene}
+ggqqplot(gathered_countsSubset1$normalized_counts, main = "Q-Q plot for normal distribution of GENENAME normalized counts")
+
+ggqqplot(gathered_vsdSubset1$vst_counts, main = "Q-Q plot for normal distribution of GENENAME vst counts")
+```
+
+```{r QQplotsGeneList}
+ggqqplot(gathered_countsSubset$normalized_counts, main = "Q-Q plot for normal distribution of gene list normalized counts")
+
+ggqqplot(gathered_vsdSubset$vst_counts, main = "Q-Q plot for normal distribution of gene list vst counts")
+```
+
+# Draw the plots
+## One gene
+### Dotplots
+#### Normalized counts
+```{r dotplot1GeneNormCounts, fig.width=6, fig.height=6}
+
+ggplot(gathered_countsSubset1, aes(x=gene_name, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  #geom_boxplot(position=position_dodge(0.3)) + # Un-comment this line to overlay box plots
+  geom_jitter(size=3, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
   scale_y_log10() +
-  xlab("Genes") +
+  
+  # set axis labels and plot title
+  xlab("Gene") +
   ylab("log10 Normalized Counts") +
-  ggtitle("Gene Expression") +
+  ggtitle("GENENAME Gene Expression") +
+
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=phenotype), method = "wilcox_test", label = "Wilcox test, italic(p) = {p}", bracket.nudge.y = 0.1) +
+  
+  # set style preferences
   theme_bw() +
+  coord_cartesian(clip = "off") + # keeps points whose value is 0 from being cut off at the bottom of the y-axis
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+```
+
+#### Variance stabilized transformed counts
+```{r dotPlot1GeneVST, fig.width=6, fig.height=4}
+
+ggplot(gathered_vsdSubset1, aes(x=gene_name, y=vst_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=3, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  
+  # set axis labels and plot title
+  xlab("Gene") +
+  ylab("Variance Stabilized Transformed Counts") +
+  ggtitle("GENENAME Gene Expression") +
+  
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=phenotype), method = "wilcox_test", label = "Wilcoxon test, italic(p) = {p}", bracket.nudge.y = 0.1) +
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") +
   theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
         plot.title = element_text(hjust=0.5),
         legend.text = element_text(size=12),
@@ -104,8 +264,168 @@ ggplot(gathered_countsSubset, aes(x=gene_name, y=normalized_counts)) +
 ```
 
 
+### Violin plots
+#### Normalized counts
+```{r violinPlot1GeneNormCounts, warning=FALSE, message=FALSE, fig.width=8, fig.height=5}
+ggplot(gathered_countsSubset1, aes(x=phenotype, y=normalized_counts, fill=phenotype)) +
+  geom_violin(trim=FALSE) +
+  geom_boxplot(width=0.2) + # overlay a boxplot
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=0.5, fill="black") + # display individual points within the violin plot
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items in the legend
+  scale_y_log10() +
+  
+  # Set axis labels and plot title
+  xlab("Group") +
+  ylab("log10 Normalized Counts") +
+  ggtitle("GENENAME Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+               label = "p.signif",
+               label.y = c(5.5, 6, 5.3)) + # Adjust label.y coordinates as appropriate to minimize overlap of significance labels and data
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") + # keeps points whose value is 0 from being cut off at the bottom of the y-axis 
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+```
+
+#### Variance stabilized transformed counts
+```{r violinPlot1GeneVST, warning=FALSE, message=FALSE, fig.width=8, fig.height=5}
+ggplot(gathered_vsdSubset1, aes(x=phenotype, y=vst_counts, fill=phenotype)) +
+  geom_violin(trim=FALSE) +
+  geom_boxplot(width=0.2) + # overlay a boxplot
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=0.5, fill="black") + # display individual points within the violin plot
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items in the legend
+  
+  # Set axis labels and plot title
+  xlab("Group") +
+  ylab("Variance Stabilized Transformed Counts") +
+  ggtitle("GENENAME Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+               label = "p.signif",
+               label.y = c(5.5, 6, 5.3)) + # Adjust label.y coordinates as appropriate to minimize overlap of significance labels and data
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") + # keeps points whose value is 0 from being cut off at the bottom of the y-axis 
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+```
 
 
+## List of genes
+### Dotplots
+#### Normalized counts
+```{r dotplotGeneListNormCounts, fig.width=8, fig.height=5}
+ggplot(gathered_countsSubset, aes(x=gene_name, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  #geom_boxplot(position=position_dodge(0.3)) + # Un-comment this line to overlay box plots
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  scale_y_log10() +
+  
+  # set axis labels and plot title
+  xlab("Genes") +
+  ylab("log10 Normalized Counts") +
+  ggtitle("Gene Expression") +
+  
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+```
 
+#### Variance stabilized transformed counts
+```{r dotplotGeneListVST, fig.width=8, fig.height=5}
+ggplot(gathered_vsdSubset, aes(x=gene_name, y=vst_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=3, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  
+  # set axis labels and plot title
+  xlab("Genes") +
+  ylab("Variance Stabilized Transformed Counts") +
+  ggtitle("Gene Expression") +
+  
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+```
+
+
+## Faceted box plots
+#### Normalized counts
+```{r facetedBoxPlotGeneListNormCounts, fig.width=10, fig.height=8}
+ggplot(gathered_countsSubset, aes(phenotype, normalized_counts, fill=phenotype)) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+#### Variance stabilized transformed counts
+```{r facetedBoxPlotGeneListVST, fig.width=10, fig.height=8}
+ggplot(gathered_vsdSubset, aes(phenotype, vst_counts, fill=phenotype)) +
+  geom_boxplot() +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="Variant Stabilized Transformed Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+# Citations
+```{r}
+sessionInfo()
+citation()
+```
 
 
