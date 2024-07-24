@@ -48,10 +48,15 @@ normalized_counts$probe_id <- rownames(normalized_counts) # Add a column with pr
 normalized_counts <- merge(as(normalized_counts,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Add column with gene names.
 ```
 
-Option 2: Import a normalized count matrix in CSV format.
+Option 2: Import a normalized count matrix and variance stabilized transformed count matrix in CSV format.
 ```{r dataImportNormCts}
-# If starting from a normalized count matrix, run this code chunk.
-normalized_counts <- read.csv("../03_output/NormalizedCounts.csv") # Import CSV of normalized counts that includes a column of gene symbols called gene_name.
+# Remove eval=FALSE if you want to run this chunk when knitting.
+
+# Import CSV of normalized counts that includes a column of gene symbols called gene_name.
+normalized_counts <- read.csv("/path/to/NormalizedCounts.csv") 
+
+# Import CSV of variance stabilized transformed counts that includes a column of gene symbols called gene_name.
+vsd <- read.csv("/path/to/vstCounts.csv")
 ```
 
 ## Sample metadata
@@ -91,8 +96,8 @@ gathered_countsSubset1$normalized_counts <- as.numeric(as.character(gathered_cou
 gathered_countsSubset1 <- inner_join(metadata, gathered_countsSubset1)
 ```
 
-#### Variance stabilized transformed counts
-NOTE: This code for variance stabilized transformation depends on an imported dds object. If you only imported a CSV of normalized counts, skip these code chunks with EVAL=FALSE.
+#### Perform variance stabilized transformation
+NOTE: This step is only for transforming an imported dds object. If you imported a CSV of vst counts, skip this code chunk with eval=FALSE.
 
 ```{r}
 vsd <- assay(vst(dds)) # perform vst
