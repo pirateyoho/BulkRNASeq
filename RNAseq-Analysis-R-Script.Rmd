@@ -39,15 +39,16 @@ BiocManager::install(version = "3.18", force=TRUE)
 options(BioC_mirror = "http://bioconductor.org")
 
 BiocManager::install("DESeq2")
-BiocManager::install("apeglm")
 install.packages("corrplot")
-install.packages("pheatmap")
 install.packages("RColorBrewer")
+install.packages("pheatmap")
+BiocManager::install("apeglm")
+install.packages("tidyverse")
 install.packages("rlang")
-BiocManager::install("clusterProfiler")
-BiocManager::install("pathview")
-BiocManager::install("enrichplot")
 BiocManager::install("EnhancedVolcano")
+install.packages("ggplot2")
+install.packages("stringr")
+install.packages("ggpubr")
 ```
 
 ## 1.2 Load necessary software packages (every time):
@@ -58,7 +59,11 @@ library(RColorBrewer)
 library(pheatmap)
 library(apeglm)
 library(tidyverse)
+library(rlang)
 library(EnhancedVolcano)
+library(ggplot2)
+library(stringr)
+library(ggpubr)
 ```
 
 ## 1.3 Read in the featureCounts data and metadata:
@@ -324,199 +329,337 @@ plotMA(Group1vsGroup2_shrink, main="Group1 vs Group2", ylim = c(-7,7),
        xlab = "means of normalized counts")
 ```
 
-## 4.2 Plot Counts
-A function for examining the counts of reads for a single gene across the groups. It normalizes counts by the estimated size factors (or normalization factors if these were used) and adds a pseudocount of 1/2 to allow for log scale plotting. The counts are grouped by the variables in "intgroup", where more than one variable can be specified.
-```{r PlotCounts, eval=FALSE, message=FALSE}
-plotCounts(dds, gene=which(rownames(res) == "ENSCAFGXXXXXX"), intgroup="phenotype") #Replace with Ensembl ID of your gene of interest
+## 4.2 Plot gene counts
+Plot the normalized counts for genes of interest between sample phenotypes. (Also see: PlotGeneCounts.Rmd script)
+
+### 4.2.1 Define genes of interest
+Make the lists of genes to include in each plot.
+```{r geneListForPlots}
+# Define the lists of genes to plot. An example of 3 gene lists being used to make 3 plots is shown here.
+geneList1 <- c("GENE1", "GENE2", "GENE3")
+geneList2 <- c("GENE4", "GENE5", "GENE6")
+geneList3 <- c("GENE7", "GENE8", "GENE9")
+
+# Some gene sets to try related to T cell phenotypes and development are provided below.
+## T cell phenotypes
+# CD8genes <- c("EOMES", "IFNG", "TNF", "PRF1", "GZMB", "GZMA")
+# Th1genes <- c("TBX21", "IFNG", "TNF")
+# Th2genes <- c("GATA3", "IL4R", "IL5", "IL13")
+# Th17genes <- c("RORC", "STAT3", "IL17A", "IL17B", "IL17D")
+# Treggenes <- c("FOXP3", "IL10", "TGFB1")
+# Tfhgenes <- c("BCL6", "IL21R", "CXCL13", "CXCR5")
+
+## TCR signaling genes
+# TCRgenes <- c("CD3E", "CD3D", "CD3G", "CD28", "ZAP70", "LCK", "FYN", "IL2RA", "IL2RB", "IL2RG")
+
+## Markers of immaturity
+# precursorGenes <- c("CD34", "KIT", "CCR9", "DNTT")
 ```
 
-## 4.3 Plot multiple genes with phenotype labels
-Make the lists of genes to include in each plot. Examples using different T cell subtypes are shown here, but modify accordingly for your project.
-```{r gene-lists, results='hide'}
-# T cell phenotypes
-CD8genes <- c("EOMES", "IFNG", "TNF", "PRF1", "GZMB", "GZMA")
-Th1genes <- c("TBX21", "IFNG", "TNF")
-Th2genes <- c("GATA3", "IL4R", "IL5", "IL13")
-Th17genes <- c("RORC", "STAT3", "IL17A", "IL17C", "IL17F")
-Treggenes <- c("FOXP3", "IL10", "TGFB1")
-Tfhgenes <- c("BCL6", "IL21R", "CXCL13", "CXCR5")
+### 4.2.2 Prepare count data
+Extract the normalized counts and variance stabilized transformed counts for the provided lists of genes.
+```{r}
 
-# TCR signaling genes
-TCRgenes <- c("CD3E", "CD3D", "CD3G", "CD28", "ZAP70", "LCK", "FYN", "IL2RA", "IL2RB", "IL2RG")
+############ GENE LIST 1 ############
+# Subset the normalized count matrix to include only the genes in this list
+countsSubset1 <- normalized_counts %>%
+  filter(gene_name %in% geneList1)
 
-# Markers of immaturity
-precursorGenes <- c("CD34", "KIT", "DNTT")
+# Gather the columns to get the normalized counts for each sample in a single column. 
+gathered_countsSubset1 <- countsSubset1 %>%
+  gather(colnames(countsSubset1)[2:104], key = "sample_name", value="normalized_counts")  # ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_countsSubset1$normalized_counts <- as.numeric(as.character(gathered_countsSubset1$normalized_counts)) # Ensures the normalized count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group. This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
+gathered_countsSubset1 <- inner_join(metadata, gathered_countsSubset1)
+
+
+############ GENE LIST 2 ############
+# Subset the normalized count matrix to include only the genes in this list
+countsSubset2 <- normalized_counts %>%
+  filter(gene_name %in% geneList2)
+
+# Gather the columns to get the normalized counts for each sample in a single column. 
+gathered_countsSubset2 <- countsSubset2 %>%
+  gather(colnames(countsSubset2)[2:104], key = "sample_name", value="normalized_counts") # ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_countsSubset2$normalized_counts <- as.numeric(as.character(gathered_countsSubset2$normalized_counts)) # Ensures the normalized count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group
+gathered_countsSubset2 <- inner_join(metadata, gathered_countsSubset2)
+
+
+############ GENE LIST 3 ############
+# Subset the normalized count matrix to include only the genes in this list
+countsSubset3 <- normalized_counts %>%
+  filter(gene_name %in% geneList3)
+
+# Gather the columns to get the normalized counts for each sample in a single column. 
+gathered_countsSubset3 <- countsSubset3 %>%
+  gather(colnames(countsSubset3)[2:104], key = "sample_name", value="normalized_counts") # ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+gathered_countsSubset3$normalized_counts <- as.numeric(as.character(gathered_countsSubset3$normalized_counts)) # Ensures the normalized count data are in the "numeric" class.
+
+# Combine with metadata to allow coloring of counts by sample group
+gathered_countsSubset3 <- inner_join(metadata, gathered_countsSubset3)
 ```
 
-Subset the normalized counts matrix (the version that includes a column of gene names) for each group, then gather the columns to get the normalized counts in a single column.
-```{r gene-list-subsets, results='hide', message=FALSE}
-# First, see which columns contain your samples, and adjust the indexing below accordingly. For example, [2:41] indexes on the 2nd through 41st column.
-colnames(normalized_counts)
+### 4.2.3 Check data distribution
+Visually inspect the distribution of your count data. T-tests can be used for data that fits a normal Gaussian distribution, but a Wilcoxon test is preferred for comparing groups when the data is not normally distributed.
 
-CD8subset <- normalized_counts %>%
-  filter(gene_name %in% CD8genes)
-gathered_CD8subset <- CD8subset %>%
-  gather(colnames(CD8subset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_CD8subset$normalized_counts <- as.numeric(as.character(gathered_CD8subset$normalized_counts)) # Ensures that the normalized count data are in the "numeric" class.
+#### Density plots
+```{r densityPlotsGeneLists}
+
+############ GENE LIST 1 ############
+ggdensity(gathered_countsSubset1$normalized_counts,
+          main = "Density of GENELIST1 count data",
+          xlab = "Normalized counts")
+
+############ GENE LIST 2 ############
+ggdensity(gathered_countsSubset2$normalized_counts,
+          main = "Density of GENELIST2 count data",
+          xlab = "Normalized counts")
+
+############ GENE LIST 3 ############
+ggdensity(gathered_countsSubset3$normalized_counts,
+          main = "Density of GENELIST3 count data",
+          xlab = "Normalized counts")
 ```
 
-Repeat for all subsets.
-```{r gene-list-subsets-2, results='hide', message=FALSE}
-Th1subset <- normalized_counts %>%
-  filter(gene_name %in% Th1genes)
-Th2subset <- normalized_counts %>%
-  filter(gene_name %in% Th2genes)
-Th17subset <- normalized_counts %>%
-  filter(gene_name %in% Th17genes)
-Tregsubset <- normalized_counts %>%
-  filter(gene_name %in% Treggenes)
-Tfhsubset <- normalized_counts %>%
-  filter(gene_name %in% Tfhgenes)
-TCRsubset <- normalized_counts %>%
-  filter(gene_name %in% TCRgenes)
-precursorSubset <- normalized_counts %>%
-  filter(gene_name %in% precursorGenes)
+#### Q-Q plots
+```{r QQplotsGeneLists}
 
-gathered_Th1subset <- Th1subset %>%
-  gather(colnames(Th1subset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_Th1subset$normalized_counts <- as.numeric(as.character(gathered_Th1subset$normalized_counts))
+############ GENE LIST 1 ############
+ggqqplot(gathered_countsSubset1$normalized_counts, main = "Q-Q plot for normal distribution of GENELIST1 normalized counts")
 
-gathered_Th2subset <- Th2subset %>%
-  gather(colnames(Th2subset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_Th2subset$normalized_counts <- as.numeric(as.character(gathered_Th2subset$normalized_counts))
+############ GENE LIST 2 ############
+ggqqplot(gathered_countsSubset2$normalized_counts, main = "Q-Q plot for normal distribution of GENELIST2 normalized counts")
 
-gathered_Th17subset <- Th17subset %>%
-  gather(colnames(Th17subset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_Th17subset$normalized_counts <- as.numeric(as.character(gathered_Th17subset$normalized_counts))
-
-gathered_Tregsubset <- Tregsubset %>%
-  gather(colnames(Tregsubset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_Tregsubset$normalized_counts <- as.numeric(as.character(gathered_Tregsubset$normalized_counts))
-
-gathered_Tfhsubset <- Tfhsubset %>%
-  gather(colnames(Tfhsubset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_Tfhsubset$normalized_counts <- as.numeric(as.character(gathered_Tfhsubset$normalized_counts))
-
-gathered_TCRsubset <- TCRsubset %>%
-  gather(colnames(TCRsubset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_TCRsubset$normalized_counts <- as.numeric(as.character(gathered_TCRsubset$normalized_counts))
-
-gathered_precursorSubset <- precursorSubset %>%
-  gather(colnames(precursorSubset)[2:41], key = "sample_name", value="normalized_counts")
-gathered_precursorSubset$normalized_counts <- as.numeric(as.character(gathered_precursorSubset$normalized_counts))
-
+############ GENE LIST 3 ############
+ggqqplot(gathered_countsSubset3$normalized_counts, main = "Q-Q plot for normal distribution of GENELIST3 normalized counts")
 ```
 
-Combine with the metadata information to allow coloring of counts by sample group.
-```{r gene-list-subsets-3, results='hide', message=FALSE}
-gathered_CD8subset <- inner_join(metadata, gathered_CD8subset) # This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
+### 4.2.4 Draw the plots
+#### Dotplots
+```{r dotplotGeneListNormCounts, fig.width=8, fig.height=5}
+
+############ GENE LIST 1 ############
+ggplot(gathered_countsSubset1, aes(x=gene_name, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  #geom_boxplot(position=position_dodge(0.3)) + # Un-comment this line to overlay box plots
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  scale_y_log10() +
+  
+  # set axis labels and plot title
+  xlab("Genes") +
+  ylab("log10 Normalized Counts") +
+  ggtitle("Gene Expression") +
+  
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+
+
+############ GENE LIST 2 ############
+ggplot(gathered_countsSubset2, aes(x=gene_name, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  #geom_boxplot(position=position_dodge(0.3)) + # Un-comment this line to overlay box plots
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  scale_y_log10() +
+  
+  # set axis labels and plot title
+  xlab("Genes") +
+  ylab("log10 Normalized Counts") +
+  ggtitle("Gene Expression") +
+  
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
+
+
+############ GENE LIST 3 ############
+ggplot(gathered_countsSubset3, aes(x=gene_name, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  #geom_boxplot(position=position_dodge(0.3)) + # Un-comment this line to overlay box plots
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
+  scale_y_log10() +
+  
+  # set axis labels and plot title
+  xlab("Genes") +
+  ylab("log10 Normalized Counts") +
+  ggtitle("Gene Expression") +
+  
+  # display stats; replace wilcox_test with t_test based on results of normalization test
+  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  coord_cartesian(clip = "off") +
+  theme(axis.text.x = element_text(size=14, face="bold", angle=45, hjust=1),
+        plot.title = element_text(hjust=0.5),
+        legend.text = element_text(size=12),
+        legend.title = element_text(size=14))
 ```
 
-Repeat for all groups.
-```{r gene-list-subsets-4, results='hide', message=FALSE}
-gathered_Th1subset <- inner_join(metadata, gathered_Th1subset)
-gathered_Th2subset <- inner_join(metadata, gathered_Th2subset)
-gathered_Th17subset <- inner_join(metadata, gathered_Th17subset)
-gathered_Tregsubset <- inner_join(metadata, gathered_Tregsubset)
-gathered_Tfhsubset <- inner_join(metadata, gathered_Tfhsubset)
-gathered_TCRsubset <- inner_join(metadata, gathered_TCRsubset)
-gathered_precursorSubset <- inner_join(metadata, gathered_precursorSubset)
+#### Faceted dotplots
+```{r facetedDotPlotNormCounts, fig.width=10, fig.height=9}
+
+############ GENE LIST 1 ############
+ggplot(gathered_countsSubset1, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")), 
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title= element_text(hjust = 0.5))
+
+
+############ GENE LIST 2 ############
+ggplot(gathered_countsSubset2, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")), 
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title= element_text(hjust = 0.5))
+
+
+############ GENE LIST 3 ############
+ggplot(gathered_countsSubset3, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")), 
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title= element_text(hjust = 0.5))
 ```
 
-Plot the counts.
-```{r plot-counts-gene-lists, message=FALSE}
-jitter <- position_jitter(width=0.1, height=0.1)
-
-ggplot(gathered_CD8subset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
+#### Box plots
+```{r facetedBoxPlotGeneListNormCounts, fig.width=10, fig.height=8}
+############ GENE LIST 1 ############
+ggplot(gathered_countsSubset1, aes(phenotype, normalized_counts, fill=phenotype)) +
+  geom_boxplot() +
   scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of CD8 Associated Genes") +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
   theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
+  theme(plot.title = element_text(hjust = 0.5))
 
-ggplot(gathered_Th1subset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
-  scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Th1 Associated Genes") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
 
-ggplot(gathered_Th2subset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
+############ GENE LIST 2 ############
+ggplot(gathered_countsSubset2, aes(phenotype, normalized_counts, fill=phenotype)) +
+  geom_boxplot() +
   scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Th2 Associated Genes") +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
   theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
+  theme(plot.title = element_text(hjust = 0.5))
 
-ggplot(gathered_Th17subset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
-  scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Th17 Associated Genes") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
 
-ggplot(gathered_Tregsubset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
+############ GENE LIST 3 ############
+ggplot(gathered_countsSubset3, aes(phenotype, normalized_counts, fill=phenotype)) +
+  geom_boxplot() +
   scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Treg Associated Genes") +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")),
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
   theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
-
-ggplot(gathered_Tfhsubset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
-  scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Tfh Associated Genes") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
-
-ggplot(gathered_TCRsubset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
-  scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Genes Associated with TCR Signaling") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
-
-ggplot(gathered_precursorSubset, aes(x=gene_name, y=normalized_counts)) +
-  geom_point(aes(color=phenotype), position=jitter) +
-  scale_y_log10() +
-  xlab("Genes") +
-  ylab("log10 Normalized Counts") +
-  ggtitle("Expression of Markers of Immaturity") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size=12, face="bold", angle=45, hjust=1)) +
-  theme(plot.title = element_text(hjust=0.5))
+  theme(plot.title = element_text(hjust = 0.5))
 ```
 
-## 4.4 Optional: Plot counts for a subset of samples only.
-Run the following code with the desired samples to exclude, then go back to 4.3 and replace "normalized_counts" with "normalized_counts_subset". Be sure to adjust your indexing to reflect the columns (samples) that have been excluded.
+
+## 4.3 Optional: Plot counts for a subset of samples only.
+Run the following code with the desired samples to exclude, then go back to 4.2.2 and replace "normalized_counts" with "normalized_counts_subset". Be sure to adjust your indexing to reflect the columns (samples) that have been excluded.
 ```{r plot-counts-subset, message=FALSE, eval=FALSE}
 sampleSubset <- c("probe_id", "Sample1", "Sample2", "Sample3", "gene_name")
 normalized_counts_subset <- normalized_counts[, sampleSubset]
 ```
 
 
-## 4.5 Correlation Matrices
+## 4.4 Correlation Matrices
 Evaluate the sample-to-sample correlation by calculating the distances (dissimilarities) between each sample and creating a matrix of distance values.
 ```{r corr-matrix-setup, message=FALSE}
 rld <- rlog(dds, blind=TRUE)
@@ -535,8 +678,9 @@ p <- pheatmap(sampleDistMatrix,
          col=colors)
 ```
 
-## 4.6 Volcano Plots
+## 4.5 Volcano Plots
 Volcano plots are a nice way of displaying the fold change against the p-value.
+### Volcano plot with top differentially expressed genes labeled
 ```{r EnhancedVolcano, message=FALSE, fig.height=4, fig.width=8.5, fig.fullwidth=TRUE}
 
 volcano_data1 <- Group1vsGroup2_final_res
@@ -585,8 +729,9 @@ EnhancedVolcano(volcano_data2,
                 )
 ```
 
+### Volcano plot with only key genes labeled
 ```{r EnhancedVolcano-selectGenes, message=FALSE, fig.height=4.5, fig.width=6, fig.fullwidth=TRUE}
-# Volcano plot with only key variables labeled:
+
 EnhancedVolcano(volcano_data1, 
                 lab = volcano_data1$gene_name,
                 x = 'log2FoldChange',
