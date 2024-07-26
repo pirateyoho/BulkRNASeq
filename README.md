@@ -24,5 +24,5 @@ Scripts should be run in the following order:
 5. fastQC.sh
 6. multiQC.sh
 7. Bioconductor Package Install.Rmd
-8. 2023-RNAseq-Analysis.Rmd
-9. Various downstream analyses in R (optional, and may be run in any order): clusterProfiler, hierarchical clustering, GSEA, GSVA, etc.
+8. RNAseq-Analysis-in-R.Rmd
+9. Various downstream analyses in R (optional, and may be run in any order): PlotGeneCounts, clusterProfiler, hierarchical clustering, GSEA, GSVA, etc.
