@@ -347,7 +347,7 @@ ggplot(gathered_countsSubset, aes(x=gene_name, y=normalized_counts, color=phenot
   ggtitle("Gene Expression") +
   
   # display stats; replace wilcox_test with t_test based on results of normalization test
-  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  geom_pwc(aes(group=phenotype), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
   
   # set style preferences
   theme_bw() +
@@ -370,7 +370,7 @@ ggplot(gathered_vsdSubset, aes(x=gene_name, y=vst_counts, color=phenotype, shape
   ggtitle("Gene Expression") +
   
   # display stats; replace wilcox_test with t_test based on results of normalization test
-  geom_pwc(aes(group=breed), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
+  geom_pwc(aes(group=phenotype), method = "wilcox_test", dodge=0.6, tip.length=0, hide.ns = TRUE, label = "p.signif") +
   
   # set style preferences
   theme_bw() +
