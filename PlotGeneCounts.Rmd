@@ -382,8 +382,55 @@ ggplot(gathered_vsdSubset, aes(x=gene_name, y=vst_counts, color=phenotype, shape
 ```
 
 
+## Faceted dotplots
+### Normalized counts
+```{r facetedDotPlotNormCounts, fig.width=10, fig.height=9}
+ggplot(gathered_countsSubset, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")), 
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title= element_text(hjust = 0.5))
+```
+
+### Variance stabilized transformed counts
+```{r facetedDotPlotVST, fig.width=10, fig.height=9}
+ggplot(gathered_vsdSubset, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
+  geom_jitter(size=2, position=position_dodge(0.3)) +
+  scale_y_log10() +
+  facet_wrap(~gene_name, scales="free_y") +
+  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  
+  # set axis labels and plot title
+  labs(x="Group",
+       y="log10 Normalized Counts",
+       fill="Group",
+       title="Gene Expression") +
+  
+  # display stats
+  stat_compare_means(comparisons = list(c("Phenotype1", "Phenotype2"), c("Phenotype2", "Phenotype3"), c("Phenotype1", "Phenotype3")), 
+                     tip.length=0, size=3, method = "wilcox.test", label = "p.signif") +
+  
+  # set style preferences
+  theme_bw() +
+  theme(plot.title= element_text(hjust = 0.5))
+```
+
 ## Faceted box plots
-#### Normalized counts
+### Normalized counts
 ```{r facetedBoxPlotGeneListNormCounts, fig.width=10, fig.height=8}
 ggplot(gathered_countsSubset, aes(phenotype, normalized_counts, fill=phenotype)) +
   geom_boxplot() +
@@ -407,7 +454,7 @@ ggplot(gathered_countsSubset, aes(phenotype, normalized_counts, fill=phenotype))
 ```
 
 
-#### Variance stabilized transformed counts
+### Variance stabilized transformed counts
 ```{r facetedBoxPlotGeneListVST, fig.width=10, fig.height=8}
 ggplot(gathered_vsdSubset, aes(phenotype, vst_counts, fill=phenotype)) +
   geom_boxplot() +
