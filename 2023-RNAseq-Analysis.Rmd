@@ -58,8 +58,7 @@ library(RColorBrewer)
 library(pheatmap)
 library(apeglm)
 library(tidyverse)
-library(clusterProfiler)
-library(enrichplot)
+library(EnhancedVolcano)
 ```
 
 ## 1.3 Read in the featureCounts data and metadata:
@@ -539,7 +538,7 @@ p <- pheatmap(sampleDistMatrix,
 ## 4.6 Volcano Plots
 Volcano plots are a nice way of displaying the fold change against the p-value.
 ```{r EnhancedVolcano, message=FALSE, fig.height=4, fig.width=8.5, fig.fullwidth=TRUE}
-library(EnhancedVolcano) # load the package
+
 volcano_data1 <- Group1vsGroup2_final_res
 
 EnhancedVolcano(volcano_data1, 
