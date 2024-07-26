@@ -87,9 +87,12 @@ Extract the normalized counts and variance stabilized transformed counts for the
 countsSubset1 <- normalized_counts %>%
   filter(gene_name %in% oneGene)
 
-# Gather the columns to get the normalized counts for each sample in a single column. ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
+# See which columns contain your samples, and adjust the indexing below accordingly. For example, [2:62] indexes on the 2nd through 41st column.
+colnames(normalized_counts)
+
+# Gather the columns to get the normalized counts for each sample in a single column.
 gathered_countsSubset1 <- countsSubset1 %>%
-  gather(colnames(countsSubset1)[2:104], key = "sample_name", value="normalized_counts")
+  gather(colnames(countsSubset1)[2:104], key = "sample_name", value="normalized_counts") # ***Adjust the numbers in the brackets to index on just the sample columns containing counts.***
 gathered_countsSubset1$normalized_counts <- as.numeric(as.character(gathered_countsSubset1$normalized_counts)) # Ensures the normalized count data are in the "numeric" class.
 
 # Combine with metadata to allow coloring of counts by sample group. This will merge the 2 data frames with respect to the "sample_name" column (i.e., a column with the same column name in both data frames)
