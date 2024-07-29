@@ -200,14 +200,15 @@ write.csv(gse2_msigdb_df, file="../03_output/YYMMDD_gsea_allMSigDBGeneSets.csv")
 
 ### Upload gmt files
 Input: Gene sets in .gmt format.
+```{r one-gmt-import, warning=FALSE}
+# If you are importing one gmt file, run this code chunk and exclude the following code chunk with eval=FALSE, include=FALSE.
+gmt <- read.gmt("../01_input/filename.gmt") # provide path to gmt file
+```
+
 ```{r mutliple-gmt-import, warning=FALSE}
-## Input GMT files for specific gene set(s) of interest.
+# If you are importing multiple GMT files, run this code chunk and exclude the preceding code chunk with eval=FALSE, include=FALSE.
 
-### For importing one GMT file:
-gmt <- read.gmt("../01_input/filename.gmt") # the read.gmt function parses gmt file to data frame
-
-### For importing and combining multiple GMT files in the same directory
-setwd("../01_input/GeneSets") # set working directory to where cell of origin .gmt files are located
+setwd("../01_input/GeneSets") # set working directory to where GMT files are located
 gmtFiles <- list.files(pattern = "\\.gmt", full.names = TRUE) # Get list of all .gmt files in this directory
 gmtTables <- lapply(gmtFiles, read.gmt) # Apply the read.gmt function to the list of .gmt files and save as a variable
 gmt <- do.call(rbind, gmtTables) # Rbind files
