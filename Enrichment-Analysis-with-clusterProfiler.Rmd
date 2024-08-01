@@ -217,7 +217,7 @@ setwd("path/to/02_scripts") # Set working directory back to default for the sess
 ```
 
 ### Enrichment analysis
-```{r gsea_cellcycle, warning=FALSE}
+```{r gsea_importedgmt, warning=FALSE}
 ## Perform GSEA with order ranked gene list and TERM2GENE = the merged data frames of our annotated gene sets of interest.
 gse1 <- GSEA(deg_genes_list1, # Use the sorted list of gene symbols *and* stat ranking column
                    exponent = 1,
@@ -235,7 +235,7 @@ write.csv(gse_df1, file="../03_output/YYMMDD_gsea_geneSetsOfInterest.csv") # Rep
 ```
 
 ### Dotplots
-```{r dotplot-cellcycle, warning=FALSE}
+```{r dotplot, warning=FALSE}
 gse1 %>%
   dotplot(showCategory = 30, x = "NES") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
@@ -247,7 +247,7 @@ gse1 %>%
 ```
 
 ### Ridgeline plots
-```{r ridgeplot-cellcycle, message=FALSE, warning=FALSE}
+```{r ridgeplot, message=FALSE, warning=FALSE}
 ridgeplot(gse1, showCategory=20) + labs(x = "enrichment distribution", title="Enrichment for <Description of Gene Sets>", y = "Gene Set") +
   scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
   theme(plot.title = element_text(hjust = 0.5))
