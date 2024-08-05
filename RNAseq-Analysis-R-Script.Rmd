@@ -410,17 +410,17 @@ Visually inspect the distribution of your count data. T-tests can be used for da
 
 ############ GENE LIST 1 ############
 ggdensity(gathered_countsSubset1$normalized_counts,
-          main = "Density of GENELIST1 count data",
+          main = "Count data density: GENELIST1",
           xlab = "Normalized counts")
 
 ############ GENE LIST 2 ############
 ggdensity(gathered_countsSubset2$normalized_counts,
-          main = "Density of GENELIST2 count data",
+          main = "Count data density: GENELIST2",
           xlab = "Normalized counts")
 
 ############ GENE LIST 3 ############
 ggdensity(gathered_countsSubset3$normalized_counts,
-          main = "Density of GENELIST3 count data",
+          main = "Count data density: GENELIST3",
           xlab = "Normalized counts")
 ```
 
@@ -428,13 +428,13 @@ ggdensity(gathered_countsSubset3$normalized_counts,
 ```{r QQplotsGeneLists}
 
 ############ GENE LIST 1 ############
-ggqqplot(gathered_countsSubset1$normalized_counts, main = "Q-Q plot for normal distribution of GENELIST1 normalized counts")
+ggqqplot(gathered_countsSubset1$normalized_counts, main = "Q-Q plot for normal distribution of count data: GENELIST1")
 
 ############ GENE LIST 2 ############
-ggqqplot(gathered_countsSubset2$normalized_counts, main = "Q-Q plot for normal distribution of GENELIST2 normalized counts")
+ggqqplot(gathered_countsSubset2$normalized_counts, main = "Q-Q plot for normal distribution of count data: GENELIST2")
 
 ############ GENE LIST 3 ############
-ggqqplot(gathered_countsSubset3$normalized_counts, main = "Q-Q plot for normal distribution of GENELIST3 normalized counts")
+ggqqplot(gathered_countsSubset3$normalized_counts, main = "Q-Q plot for normal distribution of count data: GENELIST3")
 ```
 
 ### 4.2.4 Draw the plots
