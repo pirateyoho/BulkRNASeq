@@ -388,7 +388,7 @@ ggplot(gathered_vsdSubset, aes(x=gene_name, y=vst_counts, color=phenotype, shape
 ggplot(gathered_countsSubset, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
   geom_jitter(size=2, position=position_dodge(0.3)) +
   scale_y_log10() +
-  facet_wrap(~gene_name, scales="free_y") +
+  facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
   scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
   
   # set axis labels and plot title
@@ -411,7 +411,7 @@ ggplot(gathered_countsSubset, aes(x=phenotype, y=normalized_counts, color=phenot
 ggplot(gathered_vsdSubset, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
   geom_jitter(size=2, position=position_dodge(0.3)) +
   scale_y_log10() +
-  facet_wrap(~gene_name, scales="free_y") +
+  facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
   scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
   
   # set axis labels and plot title
@@ -435,7 +435,7 @@ ggplot(gathered_vsdSubset, aes(x=phenotype, y=normalized_counts, color=phenotype
 ggplot(gathered_countsSubset, aes(phenotype, normalized_counts, fill=phenotype)) +
   geom_boxplot() +
   scale_y_log10() +
-  facet_wrap(~gene_name, scales="free_y") +
+  facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
   scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
   
   # set axis labels and plot title
@@ -459,7 +459,7 @@ ggplot(gathered_countsSubset, aes(phenotype, normalized_counts, fill=phenotype))
 ggplot(gathered_vsdSubset, aes(phenotype, vst_counts, fill=phenotype)) +
   geom_boxplot() +
   scale_y_log10() +
-  facet_wrap(~gene_name, scales="free_y") +
+  facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
   scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
   
   # set axis labels and plot title
