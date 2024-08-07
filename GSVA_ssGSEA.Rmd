@@ -45,34 +45,52 @@ library(msigdbr)
 library(Biobase)
 ```
 
-# Data Import
+# Data Import and Preparation
+
+## DDS object
 This code requires the dds object generated with DESeq2 in the RNAseq-Analysis pipeline. It is recommended to use normalized counts for GSVA, and most individuals seem to use vst transformed DESeq object. We also need to convert probe IDs to gene symbols for analysis, and a metadata file for annotating figures.
 ```{r data-input}
 setwd("/Users/eileen/PTCL/PROJ01_26PTCLs/02_scripts") # set working directory before importing files
 
-# Perform vst transformation
+## Perform vst transformation
 dds <- readRDS("dds_CD4sOnly_noCF21.RData")
 vsd <- assay(vst(dds))
 
-# Convert probe IDs to gene symbols
+## Convert probe IDs to gene symbols
 genenames <- read.csv("../01_input/gene.description.csv") # Import metadata file of gene symbols corresponding to probe IDs.
 vsd <- as.data.frame(vsd) # vsd is matrix array by default; convert to data frame for easier manipulation.
 vsd$probe_id <- rownames(vsd) # make a column of probe IDs
 vsd <- merge(as(vsd,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Adds a column of gene names for the associated probe ID
 vsd <- vsd[!duplicated(vsd$gene_name), ] # Remove rows with duplicate gene symbols.
 rownames(vsd) <- vsd$gene_name # Make gene symbols the rownames
-vsd <- dplyr::select(vsd, -c("probe_id", "gene_name")) # Remove the probe_id and gene_name columns.
+vsd <- dplyr::select(vsd, -c("probe_id", "gene_name", "description")) # Remove the probe_id, gene_name, and description columns.
 head(vsd) #make sure columns are sample names and rows are gene symbols.
 vsd_matrix <- data.matrix(vsd) # Convert to a matrix prior to analysis.
 
-#Import GMT file
+# Import GMT file
 gmt <- getGmt("../GSEA/Input/scdata_gmt.gmt", geneIdType = SymbolIdentifier())
 
-#Import metadata
+## Import metadata
 metadata <- read.csv("../01_input/metadata.csv")
 rownames(metadata) <- metadata$Sample # Make the sample ID column the rownames; change to reflect the name of the column with sample IDs in your metadata file 
 metadata <- dplyr::select(metadata, c("Phenotype")) # Select the columns in your metadata file you want annotated on the GSVA heatmap
 head(metadata) # Make sure samples are rows and classifiers are columns
+```
+
+## Optional: Subset samples from vst matrix
+```{r subsetVST, eval=FALSE}
+# Set eval=TRUE if including this chunk
+## Extract list of samples beloninging to a particular group using metadata
+# Define groups to keep 
+keepGroups <- c("Phenotype1", "Phenotype2")
+# Keep only rows and columns with samples in these groups
+metadataSubset <- metadata %>%
+  filter(Phenotype in keepGroups)
+# Extract the list of sample IDs remaining
+keepList <- metadataSubset$Sample
+
+## Subset vst matrix to include only the samples in this list
+vsd_matrix <- vsd_matrix[,keepList] 
 ```
 
 # GSVA Analysis
