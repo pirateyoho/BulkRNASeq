@@ -1,5 +1,5 @@
 ---
-title: "GSVA_ssGSEA"
+title: "Gene Set Variation Analysis"
 author: "Eileen Owens"
 date: "`r Sys.Date()`"
 output: html_document
@@ -95,71 +95,55 @@ vsd_matrix <- vsd_matrix[,keepList]
 
 # GSVA Analysis
 ```{r GSVA, message=FALSE, fig.height=6, fig.width=8, fig.fullwidth=TRUE}
-gsva_results <- gsva(
-  vsd_matrix, # count matrix
+# set parameters for GSVA
+gsva_param <- gsvaParam(
+  vsd_matrix,
   gmt,
-  method = "gsva",
-  # Appropriate for our vst transformed data
-  kcdf = "Gaussian",
-  # Minimum gene set size
-  min.sz = 10,
-  # Maximum gene set size
-  max.sz = 500,
-  # Compute Gaussian-distributed scores
-  mx.diff = TRUE,
-  # Don't print out the progress bar
-  verbose = FALSE)
+  kcdf = "Gaussian", # Compute Gaussian-distributed scores
+  minSize = 10, # Minimum gene set size
+  maxSize = 500, # Maximum gene set size
+  maxDiff = TRUE,
+  absRanking = FALSE
+)
 
+# perform GSVA
+gsva_results <- gsva(
+  gsva_param,
+  verbose=FALSE,   # Don't print out the progress bar
+)
 
-pathway_heatmap <- pheatmap::pheatmap(gsva_results,
+gsva_heatmap <- pheatmap::pheatmap(gsva_results,
                                       annotation_col = metadata,
                                       show_colnames = TRUE,
                                       show_rownames = TRUE,
                                       fontsize_row = 10,
                                       cluster_cols = TRUE, 
                                       cluster_rows = TRUE,
-                                      cutree_rows = 5, 
+                                      cutree_rows = 5,
+                                      cutree_cols = 3,
+                                      main = "GSVA. Input: Vst transformed normalized DESeq2 counts, Clustering: Ward, Distance: Euclidean",
                                       clustering_distance_rows = "euclidean",
                                       clustering_distance_cols = "euclidean",
                                       clustering_method = "ward.D2") + 
  scale_fill_gradient(c('dodgerblue', 'black', "yellow"))# Shrink the pathway labels a tad
 ```
 
-# Single sample GSEA analysis
-```{r ssGSEA, results=FALSE, fig.height=6, fig.width=8, fig.fullwidth=TRUE}
-ssgsea_results <- gsva(
-  vsd_matrix, # count matrix
-  gmt, #gene sets from gmt file
-  method = "ssgsea",
-  # Appropriate for our vst transformed data
-  kcdf = "Gaussian",
-  # Minimum gene set size
-  min.sz = 10,
-  # Maximum gene set size
-  max.sz = 500,
-  # Compute Gaussian-distributed scores
-  mx.diff = TRUE,
-  # Don't print out the progress bar
-  verbose = FALSE)
-
-pathway_heatmap <- pheatmap::pheatmap(ssgsea_results,
-                                      annotation_col = metadata,
-                                      show_colnames = TRUE,
-                                      show_rownames = TRUE,
-                                      fontsize_row = 10,
-                                      cluster_cols = TRUE, 
-                                      cluster_rows = TRUE,
-                                      cutree_rows = 5, 
-                                      clustering_distance_rows = "euclidean", 
-                                     clustering_distance_cols = "euclidean",
-                                     clustering_method = "ward.D2") + 
- scale_fill_gradient(c('dodgerblue', 'black', "yellow"))# Shrink the pathway labels a tad
-```
 
 # Export results
 ```{r file-export}
-write.csv(gsva_results, "gsva_scClusters_CD4PTCL.csv")
-write.csv(ssgsea_results, "ssgsea_scClusters_CD4PTCL.csv")
+# Cut column dendrogram into groups for sample-to-cluster assignment and export as CSV
+gsva_heatmap <- pheatmap::pheatmap(gsva_results,
+                                      annotation_col = metadata,
+                                      show_colnames = TRUE,
+                                      show_rownames = TRUE,
+                                      cluster_cols = TRUE, 
+                                      cluster_rows = TRUE,
+                                      clustering_distance_rows = "euclidean",
+                                      clustering_distance_cols = "euclidean",
+                                      clustering_method = "ward.D2")
+clusterCol <- sort(cutree(gsva_heatmap$tree_col, k=3)) # Exports the main 3 clusters by columns (samples)
+clusterCol <- as.data.frame(clusterCol)
+write.csv(clusterCol, file="../03_output/GSVA_Clusters.csv")
 ```
 
 # Citations
