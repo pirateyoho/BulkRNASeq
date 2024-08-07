@@ -71,7 +71,7 @@ gmt <- getGmt("../GSEA/Input/scdata_gmt.gmt", geneIdType = SymbolIdentifier())
 #Import metadata
 metadata <- read.csv("../01_input/metadata.csv")
 rownames(metadata) <- metadata$Sample # Make the sample ID column the rownames; change to reflect the name of the column with sample IDs in your metadata file 
-metadata <- select(metadata, c("Phenotype")) # Select the columns in your metadata file you want annotated on the GSVA heatmap
+metadata <- dplyr::select(metadata, c("Phenotype")) # Select the columns in your metadata file you want annotated on the GSVA heatmap
 head(metadata) # Make sure samples are rows and classifiers are columns
 ```
 
