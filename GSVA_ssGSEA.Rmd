@@ -69,9 +69,9 @@ vsd_matrix <- data.matrix(vsd) # Convert to a matrix prior to analysis.
 gmt <- getGmt("../GSEA/Input/scdata_gmt.gmt", geneIdType = SymbolIdentifier())
 
 #Import metadata
-metadata <- read.csv("../01_input/metadata_CD4sOnly_outlierRemoved.csv")
-rownames(metadata) <- metadata$Sample # Make the sample ID column the rownames
-metadata <- metadata[, -1, drop=FALSE] # Drop the sample ID column; drop=FALSE will keep rownames with only one column instead of returning a character vector.
+metadata <- read.csv("../01_input/metadata.csv")
+rownames(metadata) <- metadata$Sample # Make the sample ID column the rownames; change to reflect the name of the column with sample IDs in your metadata file 
+metadata <- select(metadata, c("Phenotype")) # Select the columns in your metadata file you want annotated on the GSVA heatmap
 head(metadata) # Make sure samples are rows and classifiers are columns
 ```
 
