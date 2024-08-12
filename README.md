@@ -1,6 +1,6 @@
 # BulkRNASeq
 ## Purpose
-This repository contains various bash scripts and R Markdown files for a bulk RNA-sequencing pipeline. 
+This repository contains bash scripts and R Markdown files for a bulk RNA-sequencing pipeline. 
 ## Input data
 Raw bulk RNA-sequencing files in the fastq format, a fasta file cotaining the nucleotide sequence of your reference genome, and a gtf annotation file for that reference genome.
 ## Software requirements
