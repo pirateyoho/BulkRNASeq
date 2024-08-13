@@ -163,7 +163,7 @@ gse1_msigdb_all <- GSEA(deg_genes_list1, # Use the sorted (ranked) list of gene 
 ### Dotplot
 ```{r dotplotAll}
 
-gse1_msigdb_H %>%
+gse1_msigdb_all %>%
   dotplot(showCategory = 15, x = "NES", split=".sign") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
                          option="H") +
