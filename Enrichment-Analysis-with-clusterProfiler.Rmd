@@ -125,7 +125,6 @@ gse1_msigdb_H <- GSEA(deg_genes_list1, # Use the sorted (ranked) list of gene sy
 
 ### Dotplot
 ```{r dotplotH}
-# LMO4 vs GATD3A
 gse1_msigdb_H %>%
   dotplot(showCategory = 15, x = "NES", split=".sign") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
@@ -187,13 +186,8 @@ ridgeplot(gse1_msigdb_all, showCategory=15) + labs(x = "enrichment distribution"
 ### Export results
 Export GSEA results for all significant results in all MSigDB categories as CSV files.
 ```{r data-export1}
-# LMO4 only vs GATD3A, significant results only
 gse1_msigdb_df <- as.data.frame(gse1_msigdb_all)
-write.csv(gse1_msigdb_df, file="../03_output/240425_gseaAllMSigDBGeneSets_LMO4OnlyvsGATD3AOnly.csv") # Replace with desired output path and filename
-
-# GATD3A only vs LMO4, significant results only
-gse2_msigdb_df <- as.data.frame(gse2_msigdb_all)
-write.csv(gse2_msigdb_df, file="../03_output/YYMMDD_gsea_allMSigDBGeneSets.csv") # Replace with desired output path and filename
+write.csv(gse1_msigdb_df, file="../03_output/YYMMDD_gsea_HallmarkMSigDBGeneSets.csv") # Replace with desired output path and filename
 ```
 
 ## Using specific gene sets of interest from MSigDB
@@ -274,8 +268,8 @@ names(sig_genes) <- sig_genes_df$gene_name
 sig_genes <- na.omit(sig_genes)
 
 # filter on minimum log2 fold change (log2FoldChange > 1)
-sig_up_genes_LMO4 <- names(sig_genes_LMO4)[sig_genes_LMO4 > 1]
-sig_up_genes_GATD3A <- names(sig_genes_GATD3A)[sig_genes_GATD3A > 1]
+sig_up_genes <- names(sig_genes)[sig_genes > 1]
+sig_up_genes <- names(sig_genes)[sig_genes > 1]
 ```
 
 ## Perform enrichGO analysis
