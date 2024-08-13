@@ -94,7 +94,7 @@ gse1_msigdb_C5 %>%
   dotplot(showCategory = 15, x = "NES", split=".sign") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
                          option="H") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   geom_vline(xintercept = 0, linetype=2) +
   labs(title="GSEA, MSigDB C5 Gene Sets", y = "Gene Set") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -103,7 +103,7 @@ gse1_msigdb_C5 %>%
 ### Ridgeline plot
 ```{r ridgeplotC5, warning=FALSE}
 ridgeplot(gse1_msigdb_C5, showCategory=15) + labs(x = "enrichment distribution", title="GSEA, MSigDB C5 Gene Sets", y = "Gene Set") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
@@ -130,7 +130,7 @@ gse1_msigdb_H %>%
   dotplot(showCategory = 15, x = "NES", split=".sign") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
                          option="H") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   geom_vline(xintercept = 0, linetype=2) +
   labs(title="GSEA, MSigDB Hallmark Gene Sets", y = "Gene Set") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -141,7 +141,7 @@ gse1_msigdb_H %>%
 ```{r ridgeplotH, message=FALSE, warning=FALSE}
 
 ridgeplot(gse1_msigdb_H, showCategory=15) + labs(x = "enrichment distribution", title="GSEA, MSigDB Hallmark Gene Sets", y = "Gene Set") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   theme(plot.title = element_text(hjust = 0.5))
 
 ```
@@ -168,7 +168,7 @@ gse1_msigdb_H %>%
   dotplot(showCategory = 15, x = "NES", split=".sign") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
                          option="H") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   geom_vline(xintercept = 0, linetype=2) +
   labs(title="GSEA, MSigDB Hallmark Gene Sets", y = "Gene Set") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -179,7 +179,7 @@ gse1_msigdb_H %>%
 ```{r ridgeplotAll, warning=FALSE}
 
 ridgeplot(gse1_msigdb_all, showCategory=15) + labs(x = "enrichment distribution", title="GSEA, All MSigDB Gene Sets", y = "Gene Set") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   theme(plot.title = element_text(hjust = 0.5))
 
 ```
@@ -240,7 +240,7 @@ gse1 %>%
   dotplot(showCategory = 30, x = "NES") +
   scale_colour_viridis_c(name = "Adjusted\nP-value",
                          option="H") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   geom_vline(xintercept = 0, linetype=2) +
   labs(title="GSEA for <Description of Gene Sets>", y = "Gene Set") +
   theme(plot.title = element_text(hjust = 0.5))
@@ -249,7 +249,7 @@ gse1 %>%
 ### Ridgeline plots
 ```{r ridgeplot, message=FALSE, warning=FALSE}
 ridgeplot(gse1, showCategory=20) + labs(x = "enrichment distribution", title="Enrichment for <Description of Gene Sets>", y = "Gene Set") +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40)) +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
   theme(plot.title = element_text(hjust = 0.5))
 
 ```
@@ -304,7 +304,7 @@ barplot(go_enrich,
         showCategory = 15,
         title = "Enriched GO Biological Pathways",
         font.size = 8) +
-  scale_y_discrete(labels=function(x) str_wrap(x, width=40))
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) # replaces underscores with spaces to allow wrapping of long gene set names
 ```
 
 ## Connectivity plot
