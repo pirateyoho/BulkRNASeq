@@ -408,7 +408,7 @@ ggplot(gathered_countsSubset, aes(x=phenotype, y=normalized_counts, color=phenot
 
 ### Variance stabilized transformed counts
 ```{r facetedDotPlotVST, fig.width=10, fig.height=9}
-ggplot(gathered_vsdSubset, aes(x=phenotype, y=normalized_counts, color=phenotype, shape=phenotype)) +
+ggplot(gathered_vsdSubset, aes(x=phenotype, y=vst_counts, color=phenotype, shape=phenotype)) +
   geom_jitter(size=2, position=position_dodge(0.3)) +
   scale_y_log10() +
   facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
