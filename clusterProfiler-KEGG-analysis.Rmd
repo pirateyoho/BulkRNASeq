@@ -1,0 +1,159 @@
+---
+title: "clusterProfiler-KEGG-analysis"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dev = "png",
+                      dpi = 300,
+                      echo = TRUE,
+                      cache = TRUE,
+                      warning = FALSE)
+```
+
+# Install necessary software packages (first time only):
+```{r installation, eval=FALSE, results="hide", message=FALSE}
+# if (!require("BiocManager", quietly = TRUE))
+#         install.packages("BiocManager")
+BiocManager::install(version = "3.14") # This version of Bioconductor works with R version 4.1. Use "3.11" for R version 4.0
+BiocManager::install("clusterProfiler")
+BiocManager::install("pathview")
+BiocManager::install("enrichplot")
+install.packages("ggnewscale")
+```
+
+## Load necessary software packages (every time):
+```{r software-load, results="hide", message=FALSE}
+library(clusterProfiler)
+library(pathview)
+library(enrichplot)
+library(ggplot2)
+library(ggnewscale)
+library(stringr)
+```
+
+# Prepare input
+## Import DESeq2 data
+Input: DESeq2 results in .CSV format for various comparisons of interest.
+```{r}
+# Set working directory:
+setwd("/path/to/02_scripts") # set working directory to local scripts directory
+# Read in data from deseq2
+df1 = read.csv("../03_output/DESeq2res.csv", header=TRUE) # replace with correct path and filename of DESeq2 results csv file
+
+geneList <- df1$stat # Creates a vector of the stat column from DESeq2 output
+names(geneList) <- df1$gene_name # Names vector with gene names
+```
+
+# KEGG Gene Set Enrichment Analysis
+
+## Convert Ensembl IDs to Entrez Gene IDs
+toType in the bitr function below has to be one of the available options from keyTypes(org.Cf.eg.db) and must map to one of "kegg", "ncbi-geneid", "ncbi-proteinid" or "uniprot" because gseKEGG() only accpets one of these 4 options as its keytype parameter.
+
+```{r}
+
+## Install and load your reference genome annotations. All available annotations can be found here: http://bioconductor.org/packages/release/BiocViews.html#___OrgDb.
+organism = "org.Cf.eg.db" # Canis lupus familiaris
+#BiocManager::install(organism, character.only=TRUE) # First time only, then comment out this line.
+library(organism, character.only=TRUE)
+
+# See which keytypes are available for your reference genome. "SYMBOL" and "ENTREZID" are required for this script to work as written.
+keytypes(org.Cf.eg.db)
+```
+
+Convert gene IDs for gseKEGG function. We will lose some genes here because not all IDs will be converted.
+```{r}
+ids <- bitr(names(geneList), fromType = "SYMBOL", toType ="ENTREZID", OrgDb=organism) # It is normal for this call to produce some messages/warnings.
+
+# Remove duplicate IDS
+dedup_ids <- ids[!duplicated(ids[c("SYMBOL")]),] # adjust keytype as necessary
+
+# Create a new dataframe, df2, which has only the genes which were successfully mapped using the bitr function.
+df2 <- df1[df1$gene_name %in% dedup_ids$SYMBOL,]
+df2 <- df2[!duplicated(df2[c("gene_name")]),] # I've found that sometimes this extra step is needed to remove all duplicates
+
+# Create a new column in df2 with the corresponding ENTREZ IDs
+df2$entrez_id <- dedup_ids$ENTREZID
+
+# Create a vector of log2 fold change
+kegg_gene_list <- df2$log2FoldChange
+
+# Name vector with ENTREZ ids
+names(kegg_gene_list) <- df2$entrez_id
+
+# Omit any NA values
+kegg_gene_list <- na.omit(kegg_gene_list)
+
+# Filter for only genes with log2fc >2:
+kegg_mostup <- names(kegg_gene_list)[abs(kegg_gene_list) > 2]
+df3 <- df2[df2$entrez_id %in% kegg_mostup,]
+kegg_mostup <- df3$log2FoldChange
+names(kegg_mostup) <- df3$entrez_id
+
+# Sort both gene lists in decreasing order
+kegg_gene_list = sort(kegg_gene_list, decreasing = TRUE)
+kegg_mostup = sort(kegg_mostup, decreasing = TRUE)
+```
+
+## Create gseKEGG object
+KEGG organism codes can be found here: https://www.genome.jp/kegg/catalog/org_list.html
+```{r, warning=FALSE}
+kegg_organism = "cfa" # KEGG organism code for Canis lupus familiaris
+kk <- gseKEGG(geneList = kegg_mostup, # only genes with log2fc > 2 included here; can use kegg_gene_list for ranked list of all genes if desired
+               organism = kegg_organism,
+               nPerm = 10000, # the higher the number of permutations, the more accurate your result
+               minGSSize = 3,
+               maxGSSize = 800,
+               pvalueCutoff = 0.05,
+               pAdjustMethod = "none",
+               keyType = "ncbi-geneid")
+```
+
+# Visualization of KEGG Enrichment Analysis Results
+
+## Dotplot
+
+### Version 1
+```{r}
+dotplot(kk, showCategory=10, title = "Enriched Pathways", split=".sign") + facet_grid(.~.sign)
+```
+
+### Version 2
+```{r, fig.height=8, fig.width=10}
+kk %>%
+  dotplot(showCategory = 30, x = "NES") +
+  scale_colour_viridis_c(name = "Adjusted\nP-value",
+                         option="H") +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replaces underscores with spaces to allow wrapping of long gene set names
+  geom_vline(xintercept = 0, linetype=2) +
+  labs(title="KEGG Enrichment Analysis", y = "Gene Set") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Enrichment Map
+```{r, fig.height=8}
+kk_2 <- pairwise_termsim(kk)
+emapplot(kk_2, showCategory = 10)
+```
+
+## Category Netplot
+```{r, fig.width=10}
+# categorySize can be either 'pvalue' or 'geneNum'
+cnetplot(kk, categorySize="pvalue", foldChange=kegg_gene_list, showCategory=5, node_label='category')
+```
+
+## Ridgeplot
+```{r, fig.height=10}
+ridgeplot(kk, showCategory=30) + labs(x = "enrichment distribution", title="KEGG Enrichment Analysis", y = "Gene Set") +
+  scale_y_discrete(labels = ~ str_wrap(gsub('_', ' ', .x), 50)) + # replaces underscores with spaces to allow wrapping of long gene set names
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+# Citations
+```{r}
+sessionInfo()
+citation()
+```
