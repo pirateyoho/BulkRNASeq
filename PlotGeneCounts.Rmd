@@ -309,7 +309,7 @@ ggplot(gathered_vsdSubset1, aes(x=phenotype, y=vst_counts, fill=phenotype)) +
   geom_boxplot(width=0.2) + # overlay a boxplot
   geom_dotplot(binaxis='y', stackdir='center', dotsize=0.5, fill="black") + # display individual points within the violin plot
   scale_color_manual(values = c("Phenotype1" = "blue", "Phenotype2" = "red", "Phenotype3" = "green3")) + # replace "Phenotype1" etc. with appropriate phenotypes from your metadata file
-  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items in the legend
+  (limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items in the legend
   
   # Set axis labels and plot title
   xlab("Group") +
@@ -389,7 +389,8 @@ ggplot(gathered_countsSubset, aes(x=phenotype, y=normalized_counts, color=phenot
   geom_jitter(size=2, position=position_dodge(0.3)) +
   scale_y_log10() +
   facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
-  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  (limits=c("Phenotype1", "Phenotype2", "Phenotype3"), # change the order of items along the X axis
+                   labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replace underscores with spaces and adjust spacing to avoid overlapping X-axis labels
   
   # set axis labels and plot title
   labs(x="Group",
@@ -412,7 +413,8 @@ ggplot(gathered_vsdSubset, aes(x=phenotype, y=vst_counts, color=phenotype, shape
   geom_jitter(size=2, position=position_dodge(0.3)) +
   scale_y_log10() +
   facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
-  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  (limits=c("Phenotype1", "Phenotype2", "Phenotype3"), # change the order of items along the X axis
+                   labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replace underscores with spaces and adjust spacing to avoid overlapping X-axis labels
   
   # set axis labels and plot title
   labs(x="Group",
@@ -436,7 +438,8 @@ ggplot(gathered_countsSubset, aes(phenotype, normalized_counts, fill=phenotype))
   geom_boxplot() +
   scale_y_log10() +
   facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
-  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  (limits=c("Phenotype1", "Phenotype2", "Phenotype3"), # change the order of items along the X axis
+                   labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replace underscores with spaces and adjust spacing to avoid overlapping X-axis labels) + # change the order of items along the X axis
   
   # set axis labels and plot title
   labs(x="Group",
@@ -460,7 +463,8 @@ ggplot(gathered_vsdSubset, aes(phenotype, vst_counts, fill=phenotype)) +
   geom_boxplot() +
   scale_y_log10() +
   facet_wrap(~gene_name, scales="free") + # free axis scales (as opposed to fixed) are preferred as count data may vary between the individual plots
-  scale_x_discrete(limits=c("Phenotype1", "Phenotype2", "Phenotype3")) + # change the order of items along the X axis
+  (limits=c("Phenotype1", "Phenotype2", "Phenotype3"), # change the order of items along the X axis
+                   labels = ~ str_wrap(gsub('_', ' ', .x), 40)) + # replace underscores with spaces and adjust spacing to avoid overlapping X-axis labels) + # change the order of items along the X axis
   
   # set axis labels and plot title
   labs(x="Group",
