@@ -85,7 +85,7 @@ head(metadata) # Make sure samples are rows and classifiers are columns
 keepGroups <- c("Phenotype1", "Phenotype2")
 # Keep only rows and columns with samples in these groups
 metadataSubset <- metadata %>%
-  filter(Phenotype in keepGroups)
+  filter(Phenotype %in% keepGroups)
 # Extract the list of sample IDs remaining
 keepList <- metadataSubset$Sample
 
