@@ -14,35 +14,15 @@ knitr::opts_chunk$set(dev = "png",
 
 
 ```{r load-packages, include=FALSE}
-library(BiocManager)
 library(DESeq2)
-library(clusterProfiler)
-library(corrplot)
 library(RColorBrewer)
 library(pheatmap)
 library(dplyr)
 library(readr)
 library(knitr)
 library(ggplot2)
-library(cowplot)
-library(gridExtra)
-library(rtracklayer)
-library(Rsamtools)
-library(grid)
-library(GGally)
-# library(edgeR)
-library(stringr)
-library(matrixStats)
-library(gridExtra)
-library(magrittr)
 library(GSVA)
-library(dplyr)
 library(GSEABase)
-library(shinyjs)
-library(shinybusy)
-library(qusage)
-library(msigdbr)
-library(Biobase)
 ```
 
 # Data Import and Preparation
