@@ -660,7 +660,7 @@ normalized_counts_subset <- normalized_counts[, sampleSubset]
 
 
 ## 4.4 Correlation Matrices
-Evaluate the sample-to-sample correlation by calculating the distances (dissimilarities) between each sample and creating a matrix of distance values.
+Evaluate the sample-to-sample correlation by calculating the distances (dissimilarities) between each sample and creating a matrix of distance values. Since the majority of genes are not differentially expressed, samples generally have high correlations with each other (>0.80). Samples with low correlation may indicate outliers or sample contamination.
 ```{r corr-matrix-setup, message=FALSE}
 rld <- rlog(dds, blind=TRUE)
 sampleDists <- dist(t(assay(rld)))
@@ -670,7 +670,7 @@ colnames(sampleDistMatrix) <- NULL
 colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255) #Pick colors
 ```
 
-Use this matrix to draw a heatmap that groups samples based on their gene expression similarity.
+Use this matrix to draw a heatmap that groups samples based on their gene expression similarity. The color blocks indicate substructure in the data, so you should expect to see your replicates cluster together as a block for each sample group.
 ```{r corr-matrix, message=FALSE}
 p <- pheatmap(sampleDistMatrix,
          clustering_distance_rows=sampleDists,
