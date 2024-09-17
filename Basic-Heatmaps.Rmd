@@ -1,0 +1,255 @@
+---
+title: "Basic-Heatmaps"
+author: "Eileen Owens"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(dev = "png",
+                      dpi = 300,
+                      echo = TRUE,
+                      warning = FALSE,
+                      cache = TRUE,
+                      keep_md = TRUE)
+```
+
+```{r load-packages, include=FALSE}
+library(DESeq2)
+library(RColorBrewer)
+library(pheatmap)
+library(dplyr)
+library(readr)
+library(knitr)
+library(ggplot2)
+```
+
+```{r working-directory, include=FALSE}
+# Set your working directory
+setwd("/working/directory/path")
+```
+
+# INTRODUCTION
+This script performs clustering and heatmapping of RNA-seq data, with a variety of filtering options.
+
+# Data Import and Preparation
+This code requires either the dds object generated with DESeq2 in the RNAseq-Analysis pipeline or a variance stabilized transformed count matrix. It is important to use normalized data (e.g., a normalized count matrix from DESeq2, or variance-stabilized count data), as many of these distance and correlation calculations assume a normal (parametric) data distribution. We also need to convert probe IDs to gene symbols for analysis, and a metadata file for annotating figures.
+
+## Import DDS object
+```{r data-input-dds, eval=TRUE}
+# Set eval=TRUE if including this chunk, or eval=FALSE if importing a vst matrix instead.
+
+###### Starting from dds object ######
+
+## Perform vst transformation
+dds <- readRDS("/path/to/DDS.Rdata")
+vsd <- assay(vst(dds))
+
+## Convert probe IDs to gene symbols
+genenames <- read.csv('/path/to/GeneDescription.csv') # Import metadata file of gene symbols corresponding to probe IDs.
+vsd <- as.data.frame(vsd) # vsd is matrix array by default; convert to data frame for easier manipulation.
+vsd$probe_id <- rownames(vsd) # make a column of probe IDs
+vsd <- merge(as(vsd,"data.frame"), genenames, by="probe_id", all.x=TRUE) # Adds a column of gene names for the associated probe ID
+rownames(vsd) <- make.unique(as.character(vsd$gene_name)) # Make gene symbols the rownames; make.unique accounts for duplicate gene names since R won't allow duplicate rownames
+vsd <- dplyr::select(vsd, -c("probe_id", "gene_name", "description")) # Remove the probe_id, gene_name, and description columns (or whatever columns were in your GeneDescription.csv file)
+head(vsd) #make sure columns are sample names and rows are gene symbols.
+```
+
+## Import variance stabilized transformed count matrix
+```{r data-input-vst, eval=TRUE}
+# Set eval=TRUE if including this chunk, or eval=FALSE if importing a dds object instead.
+
+###### Starting from vst matrix ######
+vsd <- read.csv("Vst_Transformed_Matrix_of_NormalizedCounts.csv")
+
+## Examine imported object
+head(vsd)
+colnames(vsd)
+
+## Make gene names the row names, using the name of the column in your vsd matrix containing the gene names (as determined above with colnames(vsd))
+rownames(vsd) <- make.unique(as.character(vsd$gene_name)) # Make gene symbols the rownames; make.unique accounts for duplicate gene names since R won't allow duplicate rownames
+
+## Remove any columns other than sample count data
+vsd <- dplyr::select(vsd, -c("X", "probe_id", "gene_name", "description")) # modify these names based on colnames(vsd); exclude any columns that are not sample IDs
+
+## Examine final object
+head(vsd) #make sure columns are sample names and rows are gene symbols.
+```
+
+## Metadata
+```{r metadata}
+# Import tab-separated metadata file
+metadata <- read.table(file = "/path/to/metadata.txt", header = FALSE)
+
+# Add column headers to reflect the data in your metadata file. Note that if your column names are different, you will need to change places in this script that refer to the 'sample_name' and 'mTOR' columns accordingly.
+colnames(metadata) <- c("sample_name", "phenotype", "etc")
+
+
+rownames(metadata) <- metadata$sample_name # Make the sample ID column the rownames; change to reflect the name of the column with sample IDs in your metadata file 
+metadata <- dplyr::select(metadata, c("phenotype", "etc")) # Select the columns in your metadata file you want annotated on the GSVA heatmap
+head(metadata) # Make sure samples are rows and classifiers are columns
+```
+
+## Optional: Subset samples
+To include only samples of a certain group or phenotype from your metadata file, edit and run this code chunk. 
+```{r subsetVSTbyGroup, eval=TRUE}
+# Set eval=TRUE if including this chunk
+## Extract list of samples belonging to a particular group using metadata
+keepGroups <- c("Phenotype1", "Phenotype2") # Define groups to keep (must match metadata file)
+
+# Keep only rows and columns with samples in these groups
+metadataSubset <- metadata %>%
+  filter(phenotype %in% keepGroups)
+
+# Extract the list of sample IDs remaining
+keepList <- row.names(metadataSubset)
+
+## Subset vst data to include only the samples in this list
+vsd <- vsd[,keepList]
+```
+
+To include only certain samples by sample ID, edit and run this code chunk.
+```{r subsetVSTbySample}
+## If you have a long list of sample names, uncomment the next 2 lines to automatically convert them from a space separated list to a comma separated list with each gene enclosed in quotations. Then copy the output and paste it below for the 'keepSamples' variable.
+#txt <- scan(text="Sample1 Sample2 Sample3", what="") # Convert space separated list of sample names to comma separated with each gene enclosed in quotes.
+#dput(txt) # Copy the output
+
+keepSamples <- c("CI105160", "CI104568", "CI104569")
+vsd <- dplyr::select(vsd, keepSamples)
+```
+
+
+# Unsupervised clustering of the top 2000 genes (by median absolute derivation)
+```{r mad}
+# Calculate the median absolute derivation for all rows in the vst transformed data. Note that the "1" in the 'apply' function indicates that the manipulation is performed on rows.
+median_absolute_derivation = apply(vsd,1,mad)
+
+# check data distribution
+hist(median_absolute_derivation, ylim=c(0,200), breaks=nrow(vsd)*0.1)
+
+# index the vst transformed count data to include only those rows (genes) that appeared in the top 2000 based on median absolute derivation.
+mad2k=vsd[rev(order(median_absolute_derivation))[1:2000],]
+```
+
+## Euclidean distance
+```{r mad-heatmap-euclidean, fig.width=14}
+# Specify colors (optional). Full list of color options here: http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+ann_colors = list(
+  phenotype = c(Phenotype1="purple3", Phenotype2="deeppink2", Phenotype3="cyan2")) # replace with your phenotype labels
+
+# Draw heatmap
+mad_heatmap <- pheatmap(mad2k, 
+              scale="row",
+              color = colorRampPalette(c("blue", "white", "red"), space = "Lab")(100),
+              cluster_rows=TRUE,
+              cluster_cols=TRUE,
+              cutree_rows = 3, # how many clusters to cut the heatmap into by row
+              cutree_cols = 3, # how many clusters to cut the heatmap into by column
+              main = "Input: Vst transformed normalized DESeq2 counts for the top 2000 genes by median absolute derivation, \n Clustering: Ward, Distance: Euclidean",
+              clustering_distance_rows = "euclidean",
+              clustering_distance_cols = "euclidean",
+              clustering_method = "ward.D2",
+              annotation_col = metadata,
+              annotation_colors = ann_colors,
+              show_rownames = FALSE) # Change to TRUE if gene symbols should be annotated on the heatmap.
+```
+
+## Pearson correlation
+```{r mad-heatmap-pearson, fig.width=14}
+# Specify colors (optional). Full list of color options here: http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+ann_colors = list(
+  phenotype = c(Phenotype1="purple3", Phenotype2="deeppink2", Phenotype3="cyan2")) # replace with your phenotype labels
+
+# Draw heatmap
+mad_heatmap <- pheatmap(mad2k, 
+              scale="row",
+              color = colorRampPalette(c("blue", "white", "red"), space = "Lab")(100),
+              cluster_rows=TRUE,
+              cluster_cols=TRUE,
+              cutree_rows = 2, # how many clusters to cut the heatmap into by row
+              cutree_cols = 4, # how many clusters to cut the heatmap into by column
+              main = "Input: Vst transformed normalized DESeq2 counts for the top 2000 genes by median absolute derivation, \n Clustering: Ward, Distance: Pearson correlation",
+              clustering_distance_rows = "correlation",
+              clustering_distance_cols = "correlation",
+              clustering_method = "ward.D2",
+              annotation_col = metadata,
+              annotation_colors = ann_colors,
+              show_rownames = FALSE) # Change to TRUE if gene symbols should be annotated on the heatmap.
+```
+
+# Clustering based on expression of a list of genes
+```{r geneList}
+## If you have a long list of genes, uncomment the next 2 lines to automatically convert them from a space separated list to a comma separated list with each gene enclosed in quotations. Then copy the output and paste it below for the 'geneList' variable.
+#txt <- scan(text="GENE1 GENE2 GENE3", what="") # Convert space separated list of genes to comma separated with each gene enclosed in quotes.
+#dput(txt) # Copy the output
+
+# Define list of genes
+geneList <- c("Gene1", "Gene2", "Gene3")
+
+# subset vst data to include only those genes
+vsd_geneList <- vsd %>%
+  filter(rownames(vsd) %in% geneList)
+```
+
+## Optional: Assign genes to categories to be annotated on heatmap
+For example, if you are interested in mapping the expression of genes associated with different human tumor subtypes among your samples, you would provide the entire list of genes defining all subtypes to your geneList variable above, and then upload a csv file here indicating which genes belong to which subtype.
+```{r geneGroups, eval=FALSE}
+# Set eval=TRUE if including this chunk
+geneGroup <- read.csv("/path/to/GeneAnnotation.csv") # metadata file with gene_name in column and which category it belongs to in a second column.
+rownames(geneGroup) <- geneGroup$gene_name # make gene_name column the rownames
+geneGroup <- geneGroup[,2, drop=FALSE] # Remove column of gene_name now that these are the row names
+```
+
+## Euclidean distance
+```{r geneListEuclidean, fig.width=14}
+# Specify colors (optional). Full list of color options here: http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+ann_colors = list(
+  phenotype = c(Phenotype1="purple3", Phenotype2="deeppink2", Phenotype3="cyan2"), # replace with your phenotype labels
+  category = c(GeneGroup1="salmon", GeneGroup2="cadetblue") # replace 'category' with whatever the second column in your geneGroup object is called, and 'GeneGroup1' etc. with the appropriate gene group/subtype.
+)
+
+vst_heatmap <- pheatmap(vsd_geneList,
+                        scale="row", 
+                        color = colorRampPalette(c("blue", "white", "red"), space = "Lab")(100),
+                        cluster_rows=TRUE, 
+                        cluster_cols=TRUE,
+                        clustering_distance_rows = "euclidean",
+                        clustering_distance_cols = "euclidean",
+                        clustering_method = "ward.D2",
+                        main = "Input: Vst transformed normalized DESeq2 counts, Clustering: Ward, Distance: Euclidean",
+                        annotation_col = metadata,
+                       annotation_row = geneGroup,
+                       annotation_colors = ann_colors,
+                       show_rownames = TRUE) # show gene names on the heatmap
+```
+
+## Pearson correlation
+```{r geneListPearson, fig.width=14}
+# Specify colors (optional). Full list of color options here: http://www.stat.columbia.edu/~tzheng/files/Rcolor.pdf
+ann_colors = list(
+  phenotype = c(Phenotype1="purple3", Phenotype2="deeppink2", Phenotype3="cyan2"), # replace with your phenotype labels
+  category = c(GeneGroup1="salmon", GeneGroup2="cadetblue") # replace 'category' with whatever the second column in your geneGroup object is called, and 'GeneGroup1' etc. with the appropriate gene group/subtype.
+)
+
+vst_heatmap <- pheatmap(vsd_geneList,
+                        scale="row", 
+                        color = colorRampPalette(c("blue", "white", "red"), space = "Lab")(100),
+                        cluster_rows=TRUE, 
+                        cluster_cols=TRUE,
+                        clustering_distance_rows = "correlation",
+                        clustering_distance_cols = "correlation",
+                        clustering_method = "ward.D2",
+                        main = "Input: Vst transformed normalized DESeq2 counts, Clustering: Ward, Distance: Pearson correlation",
+                        annotation_col = metadata,
+                       annotation_row = geneGroup,
+                       annotation_colors = ann_colors,
+                       show_rownames = TRUE) # show gene names on the heatmap
+```
+
+# Citations
+```{r}
+sessionInfo()
+citation()
+```
+
+
