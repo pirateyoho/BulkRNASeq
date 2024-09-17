@@ -35,7 +35,7 @@ This script performs clustering and heatmapping of RNA-seq data, with a variety 
 # Data Import and Preparation
 This code requires either the dds object generated with DESeq2 in the RNAseq-Analysis pipeline or a variance stabilized transformed count matrix. It is important to use normalized data (e.g., a normalized count matrix from DESeq2, or variance-stabilized count data), as many of these distance and correlation calculations assume a normal (parametric) data distribution. We also need to convert probe IDs to gene symbols for analysis, and a metadata file for annotating figures.
 
-## Import DDS object
+## Option 1: Import DDS object
 ```{r data-input-dds, eval=TRUE}
 # Set eval=TRUE if including this chunk, or eval=FALSE if importing a vst matrix instead.
 
@@ -55,7 +55,7 @@ vsd <- dplyr::select(vsd, -c("probe_id", "gene_name", "description")) # Remove t
 head(vsd) #make sure columns are sample names and rows are gene symbols.
 ```
 
-## Import variance stabilized transformed count matrix
+## Option 2: Import variance stabilized transformed count matrix
 ```{r data-input-vst, eval=TRUE}
 # Set eval=TRUE if including this chunk, or eval=FALSE if importing a dds object instead.
 
