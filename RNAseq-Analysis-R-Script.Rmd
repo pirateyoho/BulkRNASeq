@@ -68,17 +68,22 @@ library(ggpubr)
 
 ## 1.3 Read in the featureCounts data and metadata:
 ```{r data-input, results="hide"}
-# Set the appropriate working directory.
+### Set the appropriate working directory ###
 setwd("/Users/path/to/02_scripts") # copy the path to your 02_scripts directory and paste it here, in quotations. If you are a Windows user, you may have to swap the direction of your slashes from "\" to "/"
 
-# Read in the FeatureCounts file.
+### Read in the FeatureCounts file ###
+## By default, the column names in the featureCounts file are the full bam filename for your samples, which is cumbersome to work with. We will instead replace these column names with simplified sample IDs from a metadata file. ***IT IS VERY IMPORTANT THAT THE SAMPLES IN YOUR METADATA FILE ARE LISTED IN THE SAME ORDER AS THEY ARE IN THE COLUMNS OF YOUR FEATURECOUNTS FILE *** To check this, you can open your featureCounts file in Excel, or uncomment the line below to read it in to R with the headers intact first to check the order that sample bam files are listed:
+# featureCountsPreview <- read.table(file = "../01_input/FeatureCountsFileName.txt", header = TRUE)
+
+# Import the featureCounts file without its default header
 countsData <- read.table(file = "../01_input/FeatureCountsFileName.txt", header = FALSE, row.names = 1, skip = 2) # row.names = 1 assigns the first column (geneid) as the row names for the data frame.
 
-# Read in the metadata file in which the first column contains sample IDs and the subsequent columns contain information about those samples. 
+# Read in a metadata file in which the first column contains sample IDs and the subsequent columns contain information about those samples. ### *** THE ORDER IN WHICH SAMPLES ARE LISTED IN YOUR METADATA FILE MUST MATCH THE ORDER THEY ARE LISTED IN THE COLUMNS OF YOUR FEATURECOUNTS FILE *** ###
 metadata <- read.table(file = "../01_input/metadata.txt", header = FALSE)
 colnames(metadata) <- c("sample_name", "phenotype") # Adds column headers; ADJUST AS APPROPRIATE FOR YOUR METADATA FILE: e.g., c("sample_name", "phenotype", "sex", "breed", "etc")
 
-### Give column names to countsData file: ###
+# Give column names to countsData:
+#### Because we are pasting sample IDs from our metadata file to the columns of our featureCounts file, it is important that the samples in your metadata file are listed in the SAME ORDER as they are in the columns of your featureCounts file. ####
 as.vector(metadata$sample_name) # The last column names will be names for each sample. We can pull those names from metadata.
 colnames(countsData) <- c("chr", "start", "stop", "strand", "length", as.vector(metadata$sample_name))
 ```
