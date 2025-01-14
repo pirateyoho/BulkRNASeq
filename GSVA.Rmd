@@ -67,10 +67,10 @@ keepGroups <- c("Phenotype1", "Phenotype2")
 metadataSubset <- metadata %>%
   filter(Phenotype %in% keepGroups)
 # Extract the list of sample IDs remaining
-keepList <- metadataSubset$Sample
+keepList <- rownames(metadataSubset) 
 
 ## Subset vst matrix to include only the samples in this list
-vsd_matrix <- vsd_matrix[,keepList] 
+vsd_matrix <- vsd_matrix[, colnames(vsd_matrix) %in% keepList] 
 ```
 
 # GSVA Analysis
